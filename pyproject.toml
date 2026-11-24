@@ -1,0 +1,29 @@
+[project]
+name = "security-test-automation"
+version = "0.3.0rc1"
+description = "Developer Preview: offline-by-default static security audit runner and Agent Skills for coding agents"
+requires-python = ">=3.10"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Topic :: Security"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "jsonschema>=4"]
+
+[project.scripts]
+security-skills = "security_runner.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["security_runner*"]
+
+[tool.setuptools.package-data]
+security_runner = ["data/*.json", "data/checks/*.json", "data/schemas/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

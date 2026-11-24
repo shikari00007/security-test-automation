@@ -1,0 +1,87 @@
+{
+  "vulnerable": {
+    "SEC-K8S-001": [
+      [
+        "k8s/deployment.yaml",
+        15
+      ],
+      [
+        "k8s/deployment.yaml",
+        20
+      ],
+      [
+        "k8s/deployment.yaml",
+        21
+      ],
+      [
+        "k8s/deployment.yaml",
+        29
+      ]
+    ],
+    "SEC-K8S-002": [
+      [
+        "k8s/deployment.yaml",
+        22
+      ],
+      [
+        "k8s/deployment.yaml",
+        23
+      ]
+    ],
+    "SEC-K8S-003": [
+      [
+        "docker/Dockerfile",
+        1
+      ],
+      [
+        "docker/Dockerfile",
+        3
+      ]
+    ],
+    "SEC-K8S-004": [
+      [
+        "terraform/main.tf",
+        8
+      ],
+      [
+        "terraform/main.tf",
+        19
+      ],
+      [
+        "terraform/main.tf",
+        21
+      ]
+    ],
+    "SEC-K8S-005": [
+      [
+        "k8s/secret.yaml",
+        6
+      ]
+    ],
+    "SEC-K8S-006": [
+      [
+        "k8s/rbac.yaml",
+        7
+      ],
+      [
+        "k8s/rbac.yaml",
+        21
+      ]
+    ],
+    "SEC-SC-006": [
+      [
+        "k8s/secret.yaml",
+        8
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-K8S-001",
+    "SEC-K8S-002",
+    "SEC-K8S-003",
+    "SEC-K8S-004",
+    "SEC-K8S-005",
+    "SEC-K8S-006",
+    "SEC-SC-006"
+  ]
+}

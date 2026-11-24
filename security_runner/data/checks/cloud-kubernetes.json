@@ -1,0 +1,253 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-K8S-001",
+      "domain": "cloud-kubernetes",
+      "title": "Privileged containers, privilege escalation, host namespaces or hostPath mounts",
+      "category": "Workload hardening",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.yaml",
+          "*.yml"
+        ]
+      },
+      "expected_secure_behavior": "Pods run unprivileged with allowPrivilegeEscalation=false and share no host namespaces or filesystem paths.",
+      "remediation": "Remove privileged:true, set allowPrivilegeEscalation:false, drop hostNetwork/hostPID/hostIPC and replace hostPath with emptyDir or PersistentVolumes; enforce with Pod Security Admission restricted.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-250"
+        ],
+        "other": [
+          "Kubernetes Pod Security Standards (baseline/restricted)",
+          "CIS Kubernetes Benchmark 5.2"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-002",
+      "domain": "cloud-kubernetes",
+      "title": "Containers run as root (runAsUser 0 or runAsNonRoot false)",
+      "category": "Workload hardening",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.yaml",
+          "*.yml"
+        ]
+      },
+      "expected_secure_behavior": "Containers run as a non-root UID with runAsNonRoot=true.",
+      "remediation": "Set runAsNonRoot:true and a non-zero runAsUser/runAsGroup, and build images that do not require root.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-250"
+        ],
+        "other": [
+          "Kubernetes Pod Security Standards (restricted)"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-003",
+      "domain": "cloud-kubernetes",
+      "title": "Dockerfile with unpinned or latest base image, no USER, or curl-pipe-shell",
+      "category": "Supply chain / image hardening",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "Dockerfile",
+          "Dockerfile.*",
+          "*.Dockerfile"
+        ]
+      },
+      "expected_secure_behavior": "Base images are pinned (tag plus digest), the image runs as non-root and no remote script is piped into a shell.",
+      "remediation": "Pin base images by digest, add a non-root USER, and download installers to a file, verify a checksum or signature, then execute.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-250",
+          "CWE-494"
+        ],
+        "other": [
+          "CIS Docker Benchmark 4.1"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-004",
+      "domain": "cloud-kubernetes",
+      "title": "Terraform open admin ingress, public S3 ACL, or S3 bucket without an explicit server-side encryption configuration",
+      "category": "Infrastructure as code",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.tf"
+        ]
+      },
+      "expected_secure_behavior": "Admin ports are not reachable from 0.0.0.0/0, buckets are private, and an explicit server-side encryption configuration (ideally KMS) is declared. Note: AWS applies SSE-S3 by default since 2023, so the encryption finding is a policy/KMS-hygiene signal, not proof of plaintext storage.",
+      "remediation": "Restrict ingress CIDRs to trusted ranges or a bastion/VPN, remove public-read ACLs, enable S3 Block Public Access and a server-side encryption configuration.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-284",
+          "CWE-311"
+        ],
+        "other": [
+          "CIS AWS Foundations 5.2, 2.1.1"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-005",
+      "domain": "cloud-kubernetes",
+      "title": "Plaintext Secret manifest with data committed to source",
+      "category": "Secrets management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.yaml",
+          "*.yml"
+        ]
+      },
+      "expected_secure_behavior": "Secret values are not stored in source; they come from an external secret manager or are sealed/encrypted.",
+      "remediation": "Remove literal Secret data from the repository, rotate exposed values and use External Secrets, SealedSecrets or SOPS.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-312",
+          "CWE-798"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-006",
+      "domain": "cloud-kubernetes",
+      "title": "cluster-admin bindings or wildcard RBAC rules",
+      "category": "Access control",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.yaml",
+          "*.yml"
+        ]
+      },
+      "expected_secure_behavior": "RBAC follows least privilege with explicit verbs and resources, and cluster-admin is not bound to workloads.",
+      "remediation": "Replace wildcard verbs/resources with the minimum needed, bind namespaced Roles where possible and remove cluster-admin from service accounts.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-269"
+        ],
+        "other": [
+          "CIS Kubernetes Benchmark 5.1.1, 5.1.3"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-K8S-050",
+      "domain": "cloud-kubernetes",
+      "title": "Live cluster RBAC audit using read-only authorized API access",
+      "category": "Access control",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Effective permissions in the live cluster match the least-privilege design.",
+      "remediation": "Enumerate bindings with a read-only authorized account, review who can create pods/exec/secrets or escalate, and remove excess grants.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-269"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

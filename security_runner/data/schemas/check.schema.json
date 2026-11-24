@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reviewed security check",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "domain",
+    "title",
+    "category",
+    "mode",
+    "executor",
+    "severity",
+    "confidence",
+    "profiles",
+    "applies_to",
+    "expected_secure_behavior",
+    "remediation",
+    "review_state",
+    "standards",
+    "maturity"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^SEC-(WEB|API|SC|AND|IOS|DSK|K8S|AI)-[0-9]{3}$"
+    },
+    "domain": {
+      "enum": [
+        "web",
+        "api",
+        "android",
+        "ios",
+        "desktop",
+        "supply-chain",
+        "cloud-kubernetes",
+        "ai-llm"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 8
+    },
+    "category": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "static",
+        "dynamic",
+        "hybrid",
+        "manual"
+      ]
+    },
+    "executor": {
+      "enum": [
+        "builtin",
+        "external",
+        "none"
+      ],
+      "description": "builtin = rule registered in security_runner.adapters; external = needs a third-party tool; none = planned/manual only"
+    },
+    "rule": {
+      "type": "string",
+      "description": "for executor=external: tool adapter id"
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "confidence": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "quick",
+          "standard",
+          "deep"
+        ]
+      },
+      "minItems": 1
+    },
+    "applies_to": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file_globs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "disruptive": {
+      "type": "boolean"
+    },
+    "high_impact": {
+      "type": "boolean"
+    },
+    "expected_secure_behavior": {
+      "type": "string",
+      "minLength": 10
+    },
+    "remediation": {
+      "type": "string",
+      "minLength": 10
+    },
+    "review_state": {
+      "enum": [
+        "reviewed"
+      ]
+    },
+    "standards": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cwe": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^CWE-[0-9]+$"
+          }
+        },
+        "owasp": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "asvs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "masvs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "other": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "canonical_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "regression": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "framework": {
+          "enum": [
+            "pytest",
+            "playwright",
+            "schemathesis",
+            "junit",
+            "xctest",
+            "espresso",
+            "none"
+          ]
+        }
+      }
+    },
+    "maturity": {
+      "enum": [
+        "preview",
+        "experimental",
+        "unimplemented"
+      ],
+      "description": "preview=static rule shipped in Developer Preview; experimental=not yet independently reviewed; unimplemented=planned/manual/dynamic, no automation"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "static"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "executor": {
+            "enum": [
+              "builtin",
+              "external"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "enum": [
+              "dynamic",
+              "manual"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "executor": {
+            "const": "none"
+          }
+        }
+      }
+    }
+  ]
+}

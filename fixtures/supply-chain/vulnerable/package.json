@@ -1,0 +1,18 @@
+{
+  "name": "shop-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "webpack",
+    "postinstall": "node scripts/setup.js"
+  },
+  "dependencies": {
+    "left-pad": "*",
+    "lodash": "latest",
+    "internal-lib": "git+https://git.example.test/team/internal-lib.git#main",
+    "tarball-lib": "http://cdn.example.test/tarball-lib-1.0.0.tgz",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "mocha": ">=9.0.0"
+  }
+}

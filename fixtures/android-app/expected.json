@@ -1,0 +1,64 @@
+{
+  "vulnerable": {
+    "SEC-AND-001": [
+      [
+        "app/src/main/AndroidManifest.xml",
+        22
+      ],
+      [
+        "app/src/main/AndroidManifest.xml",
+        24
+      ]
+    ],
+    "SEC-AND-002": [
+      [
+        "app/src/main/AndroidManifest.xml",
+        9
+      ]
+    ],
+    "SEC-AND-003": [
+      [
+        "app/src/main/AndroidManifest.xml",
+        10
+      ]
+    ],
+    "SEC-AND-004": [
+      [
+        "app/src/main/AndroidManifest.xml",
+        11
+      ],
+      [
+        "app/src/main/res/xml/network_security_config.xml",
+        3
+      ]
+    ],
+    "SEC-AND-005": [
+      [
+        "app/src/main/java/com/example/vulnapp/WebActivity.java",
+        11
+      ],
+      [
+        "app/src/main/java/com/example/vulnapp/WebActivity.java",
+        12
+      ]
+    ],
+    "SEC-AND-006": [
+      [
+        "app/src/main/java/com/example/vulnapp/Session.java",
+        8
+      ],
+      [
+        "app/src/main/java/com/example/vulnapp/Session.java",
+        11
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-AND-001",
+    "SEC-AND-002",
+    "SEC-AND-003",
+    "SEC-AND-004",
+    "SEC-AND-005",
+    "SEC-AND-006"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "vulnerable": {
+    "SEC-AI-001": [
+      [
+        "app/assistant.py",
+        16
+      ],
+      [
+        "app/assistant.py",
+        23
+      ],
+      [
+        "app/assistant.py",
+        29
+      ]
+    ],
+    "SEC-AI-002": [
+      [
+        ".mcp.json",
+        5
+      ],
+      [
+        ".mcp.json",
+        9
+      ],
+      [
+        ".mcp.json",
+        15
+      ]
+    ],
+    "SEC-AI-003": [
+      [
+        "app/agent.py",
+        8
+      ],
+      [
+        "app/agent.py",
+        9
+      ]
+    ],
+    "SEC-AI-004": [
+      [
+        "app/models.py",
+        9
+      ],
+      [
+        "app/models.py",
+        14
+      ],
+      [
+        "app/models.py",
+        18
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-AI-001",
+    "SEC-AI-002",
+    "SEC-AI-003",
+    "SEC-AI-004"
+  ]
+}

@@ -1,0 +1,5 @@
+import React from 'react';
+
+export function Comment({ html }) {
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}

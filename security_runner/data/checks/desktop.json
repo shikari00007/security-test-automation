@@ -1,0 +1,242 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-DSK-001",
+      "domain": "desktop",
+      "title": "Electron insecure webPreferences (nodeIntegration, contextIsolation, sandbox, webSecurity)",
+      "category": "Application configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.ts"
+        ]
+      },
+      "expected_secure_behavior": "Renderers run with nodeIntegration off, contextIsolation on, sandbox on and webSecurity on.",
+      "remediation": "Set nodeIntegration:false, contextIsolation:true, sandbox:true, webSecurity:true; expose a minimal API through a preload script using contextBridge.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1188"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-DSK-002",
+      "domain": "desktop",
+      "title": "shell.openExternal or loadURL with unvalidated or remote input",
+      "category": "Application logic",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.ts"
+        ]
+      },
+      "expected_secure_behavior": "External URLs are parsed and checked against a protocol and host allowlist before being opened; windows load local or HTTPS-only content.",
+      "remediation": "Parse with new URL(), allow only https: (and explicitly needed schemes) and a host allowlist before shell.openExternal; load local files with loadFile and HTTPS origins only with loadURL.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-939",
+          "CWE-78"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-DSK-003",
+      "domain": "desktop",
+      "title": "Auto-update over HTTP or with signature verification disabled",
+      "category": "Update integrity",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.ts",
+          "package.json",
+          "electron-builder.yml",
+          "app-update.yml"
+        ]
+      },
+      "expected_secure_behavior": "Updates are fetched over HTTPS and their code signature is verified before install.",
+      "remediation": "Serve update feeds over HTTPS, keep verifyUpdateCodeSignature enabled, sign releases and pin the publisher name.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-494",
+          "CWE-319"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-DSK-004",
+      "domain": "desktop",
+      "title": "Connection string with embedded password in application config",
+      "category": "Secrets management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "appsettings*.json",
+          "app.config",
+          "web.config",
+          "*.ini"
+        ]
+      },
+      "expected_secure_behavior": "Config files hold no credentials; secrets come from a vault, OS credential store or environment at runtime, or use integrated authentication.",
+      "remediation": "Remove passwords from config, rotate any exposed credential, and use integrated auth, a secret store or environment injection.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-798",
+          "CWE-256"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-DSK-005",
+      "domain": "desktop",
+      "title": "Insecure deserialization (BinaryFormatter, ObjectInputStream, pickle)",
+      "category": "Application logic",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.cs",
+          "*.vb",
+          "*.java",
+          "*.kt",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Untrusted data is parsed with data-only formats (JSON) or filtered deserializers.",
+      "remediation": "Replace BinaryFormatter/NetDataContractSerializer with System.Text.Json, use ObjectInputFilter allowlists for Java serialization, and never unpickle untrusted data.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-502"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-DSK-050",
+      "domain": "desktop",
+      "title": "DLL search-order and hijack testing",
+      "category": "Application loading",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "The application loads libraries only from trusted, non-writable locations with safe search order.",
+      "remediation": "Use LoadLibraryEx with safe flags, SetDefaultDllDirectories, install to admin-only directories and sign loaded modules. Test on an authorized lab host.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-427"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-DSK-051",
+      "domain": "desktop",
+      "title": "IPC and named-pipe authorization testing",
+      "category": "Application logic",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Local IPC endpoints authenticate and authorize callers and restrict ACLs.",
+      "remediation": "Apply restrictive ACLs to pipes/sockets, verify caller identity and validate all messages. Test on an authorized lab host.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-284"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

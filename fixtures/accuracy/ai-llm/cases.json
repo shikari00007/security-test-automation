@@ -1,0 +1,862 @@
+{
+ "cases": [
+  {
+   "id": "ai001-neg-literal-eval",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "eval on a literal in an LLM file is not model output",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f():\n    return eval('1 + 2')\n"
+   }
+  },
+  {
+   "id": "ai001-neg-literal-eval-fn",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "ast.literal_eval is a safe parser, not eval",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport ast\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    t = r.choices[0].message.content\n    return ast.literal_eval(t)\n"
+   }
+  },
+  {
+   "id": "ai001-neg-json-loads",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "structured parse of output; no sink",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport json\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    data = json.loads(r.choices[0].message.content)\n    return data['x']\n"
+   }
+  },
+  {
+   "id": "ai001-neg-reassigned-var",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "same variable name reused with a literal in another function must not stay tainted",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\ndef ask(q):\n    text = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    return text\n\ndef cleanup():\n    text = 'rm -rf /tmp/cache'\n    os.system(text)\n"
+   }
+  },
+  {
+   "id": "ai001-neg-allowlist-map",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "model choice mapped through an allow-list dict",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport subprocess\nALLOWED = {'status': ['git', 'status']}\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    choice = r.choices[0].message.content.strip()\n    subprocess.run(ALLOWED[choice])\n"
+   }
+  },
+  {
+   "id": "ai001-neg-guarded-membership",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "membership check against allow-list directly before the sink",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport subprocess\nSAFE_CMDS = ('ls', 'pwd')\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    cmd = r.choices[0].message.content.strip()\n    if cmd not in SAFE_CMDS:\n        raise ValueError(cmd)\n    subprocess.run([cmd])\n"
+   }
+  },
+  {
+   "id": "ai001-neg-sql-bound",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "model output bound as SQL parameter",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f(db):\n    t = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    return db.execute('SELECT * FROM docs WHERE title = ?', (t,)).fetchall()\n"
+   }
+  },
+  {
+   "id": "ai001-neg-log-string-mentions-eval",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "text inside a string literal mentioning eval(answer) is not a sink",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport logging\ndef f():\n    answer = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    logging.warning('refusing to eval(answer) for %s', 'x')\n    return answer\n"
+   }
+  },
+  {
+   "id": "ai001-neg-js-print",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "model output only rendered via textContent / console",
+   "files": {
+    "a.js": "import OpenAI from 'openai';\nconst client = new OpenAI();\nasync function f(el) {\n  const r = await client.chat.completions.create({model: 'm', messages: []});\n  const out = r.choices[0].message.content;\n  el.textContent = out;\n  console.log(out);\n}\n"
+   }
+  },
+  {
+   "id": "ai001-neg-unrelated-exec-in-llm-file",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "shell call with fixed argv in a file that also calls the model",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport subprocess\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    print(r.choices[0].message.content)\n    subprocess.run(['git', 'status'])\n"
+   }
+  },
+  {
+   "id": "ai001-pos-py-eval",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "model output into eval",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f(q):\n    r = client.chat.completions.create(model='m', messages=[])\n    answer = r.choices[0].message.content\n    return eval(answer)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-propagated-shell",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "taint through f-string and a second variable into os.system",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\ndef f(q):\n    resp = client.chat.completions.create(model='m', messages=[])\n    code = resp.choices[0].message.content.strip()\n    cmd = f'bash -c {code}'\n    os.system(cmd)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-inline-call",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "LLM call used directly as sink argument",
+   "files": {
+    "a.py": "from langchain_openai import ChatOpenAI\nllm = ChatOpenAI()\ndef f(p):\n    exec(llm.invoke(p).content)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-sql-fstring",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "model-written SQL executed through an f-string",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f(cur):\n    resp = client.chat.completions.create(model='m', messages=[])\n    where = resp.choices[0].message.content\n    cur.execute(f\"SELECT * FROM t WHERE {where}\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-js-exec-template",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "JS child_process.exec with template literal of model output",
+   "files": {
+    "a.js": "import OpenAI from 'openai';\nimport { execSync } from 'child_process';\nconst client = new OpenAI();\nasync function f() {\n  const r = await client.chat.completions.create({model: 'm', messages: []});\n  const cmd = r.choices[0].message.content;\n  execSync(`sh -c ${cmd}`);\n}\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "ai002-neg-pinned-npx",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "exact-pinned npx package, scoped name",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"gh\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-github@1.2.3\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-pinned-uvx",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "uvx with == pin and --from",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"git\": {\n      \"command\": \"uvx\",\n      \"args\": [\n        \"--from\",\n        \"mcp-server-git==0.6.2\",\n        \"mcp-server-git\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-project-dir",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "filesystem server scoped to the project directory",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-filesystem@2025.1.14\",\n        \"/workspace/app\",\n        \"./docs\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-env-reference",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "tokens referenced from environment, not inline",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"gh\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-github@1.2.3\"\n      ],\n      \"env\": {\n        \"GITHUB_PERSONAL_ACCESS_TOKEN\": \"${GITHUB_TOKEN}\"\n      }\n    },\n    \"api\": {\n      \"url\": \"https://x.example.test/mcp\",\n      \"headers\": {\n        \"Authorization\": \"Bearer ${MCP_TOKEN}\"\n      }\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-auth-named-nonsecret",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "env keys containing 'auth' with non-secret values (mode, URL, header name)",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"a\": {\n      \"command\": \"node\",\n      \"args\": [\n        \"server.js\"\n      ],\n      \"env\": {\n        \"AUTH_MODE\": \"oauth\",\n        \"AUTHOR\": \"docs-team\",\n        \"TOKEN_URL\": \"https://idp.example.test/token\",\n        \"API_KEY_HEADER\": \"X-Api-Key\",\n        \"DEBUG_TOKENS\": \"false\"\n      }\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-local-script",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "locally vendored server launched by path is not a registry fetch",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"local\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"./tools/my-mcp-server\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-npx-package-flag",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "npx --package pinned, trailing bin name is not the package",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"p\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"--package=mcp-thing@1.4.0\",\n        \"mcp-thing-bin\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-yaml-comment",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "unpinned launcher only in a YAML comment",
+   "files": {
+    "mcp-servers.yaml": "servers:\n  a:\n    command: npx\n    args: [\"-y\", \"pkg@1.0.0\"]\n# example only: npx -y some-unpinned-pkg\n"
+   }
+  },
+  {
+   "id": "ai002-neg-home-subdir",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "subdirectory of home is not the home root",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-filesystem@1.0.0\",\n        \"/home/dev/projects/app\"\n      ]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-pos-unpinned-npx",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "npx -y with no version",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"some-mcp-server\"]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     ".mcp.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ai002-pos-vscode-servers-uvx-bunx",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "VS Code style 'servers' key; unpinned uvx and bunx",
+   "files": {
+    ".vscode/mcp.json": "{\n  \"servers\": {\n    \"a\": {\n      \"command\": \"uvx\",\n      \"args\": [\"mcp-server-fetch\"]\n    },\n    \"b\": {\n      \"command\": \"bunx\",\n      \"args\": [\"--yes\", \"mcp-thing@latest\"]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     ".vscode/mcp.json",
+     5
+    ],
+    [
+     ".vscode/mcp.json",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "ai002-pos-root-fs-and-inline-token",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "filesystem server on home dir and literal token in env",
+   "files": {
+    "claude_desktop_config.json": "{\n  \"mcpServers\": {\n    \"filesystem\": {\n      \"command\": \"node\",\n      \"args\": [\"server.js\", \"~\"]\n    },\n    \"svc\": {\n      \"command\": \"node\",\n      \"args\": [\"svc.js\"],\n      \"env\": {\n        \"SERVICE_API_KEY\": \"sk-EXAMPLE0000000000000000\"\n      }\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "claude_desktop_config.json",
+     5
+    ],
+    [
+     "claude_desktop_config.json",
+     11
+    ]
+   ]
+  },
+  {
+   "id": "ai002-pos-header-bearer",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "literal bearer token in remote server headers",
+   "files": {
+    "mcp.json": "{\n  \"mcpServers\": {\n    \"remote\": {\n      \"url\": \"https://mcp.example.test/sse\",\n      \"headers\": {\n        \"Authorization\": \"Bearer EXAMPLETOKEN0000000000\"\n      }\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "mcp.json",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "ai003-neg-dangerous-false",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "explicitly disabled dangerous flag",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nagent = create_pandas_dataframe_agent(llm, df, allow_dangerous_code=False)\n"
+   }
+  },
+  {
+   "id": "ai003-neg-import-only",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "import of the tool class without instantiation",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nfrom langchain_experimental.tools import PythonREPLTool\n"
+   }
+  },
+  {
+   "id": "ai003-neg-commented",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "tool instantiation only in a comment",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\n# tools = [ShellTool()]\ntools = []\n"
+   }
+  },
+  {
+   "id": "ai003-neg-approval-gate",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "shell tool wrapped with an approval callback in the same module",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nfrom langchain_community.callbacks import HumanApprovalCallbackHandler\ntool = ShellTool()\nrun = tool.run\ncb = HumanApprovalCallbackHandler(should_check=lambda x: True)\n"
+   }
+  },
+  {
+   "id": "ai003-neg-lookalike-class",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "similarly named class that is not the dangerous tool",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\ntools = [ShellToolkitDoc(), MyPythonREPLToolDescription()]\n"
+   }
+  },
+  {
+   "id": "ai003-neg-hitl-true",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "human-in-the-loop on, auto-approve off",
+   "files": {
+    "cfg.yaml": "agent:\n  llm: gpt\n  human_in_the_loop: true\n  auto_approve: false\n"
+   }
+  },
+  {
+   "id": "ai003-neg-js-browser-false",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "dangerouslyAllowBrowser false",
+   "files": {
+    "a.js": "import OpenAI from 'openai';\nconst c = new OpenAI({ dangerouslyAllowBrowser: false });\n"
+   }
+  },
+  {
+   "id": "ai003-neg-no-llm-context",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "allow_dangerous_code-like text in a non-LLM file is out of scope",
+   "files": {
+    "a.py": "import requests\nallow_dangerous_requests = True\n"
+   }
+  },
+  {
+   "id": "ai003-neg-needs-approval-kw",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "shell tool declared with needs_approval and an approval handler",
+   "files": {
+    "a.py": "from agents import Agent, ShellTool\nt = ShellTool(executor=run, needs_approval=True)\nagent = Agent(name='a', tools=[t])\n"
+   }
+  },
+  {
+   "id": "ai003-neg-test-file",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "stub shell tool inside a test file is not deployed agent wiring",
+   "files": {
+    "tests/test_tools.py": "from agents import ShellTool\ndef test_x():\n    t = ShellTool(executor=lambda r: 'ok')\n    assert t\n"
+   }
+  },
+  {
+   "id": "ai003-neg-comment-trailing-line-shift",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "blank lines and comments before a call must not shift reported lines or create hits",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\n\n\n# note\n\nx = 1  # ShellTool() would be dangerous\n"
+   }
+  },
+  {
+   "id": "ai003-neg-hosted-container-shell",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "shell tool bound to an isolated hosted container with network disabled",
+   "files": {
+    "a.py": "from agents import Agent, ShellTool\nagent = Agent(name='a', tools=[\n    ShellTool(environment={'type': 'container_auto', 'network_policy': {'type': 'disabled'}})\n])\n"
+   }
+  },
+  {
+   "id": "ai003-pos-shell-sandbox-disabled",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "explicitly unsandboxed shell tool still flagged",
+   "files": {
+    "a.py": "from agents import Agent, ShellTool\nsandbox = False\nagent = Agent(name='a', tools=[ShellTool()])\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-dangerous-code",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "allow_dangerous_code=True on an agent",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nagent = create_pandas_dataframe_agent(llm, df, allow_dangerous_code=True)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-line-after-comments",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "line number is exact after comments and blank lines",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\n\n\n# comment\n\nagent = create_pandas_dataframe_agent(llm, df, allow_dangerous_requests=True)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-shell-tool",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "ShellTool and Python REPL given to agent, no approval anywhere",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\ntools = [ShellTool(), PythonREPLTool()]\nagent = initialize_agent(tools, llm)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-js-browser-key",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "API key allowed in browser",
+   "files": {
+    "a.ts": "import OpenAI from 'openai';\nconst c = new OpenAI({ apiKey: k, dangerouslyAllowBrowser: true });\n"
+   },
+   "expect": [
+    [
+     "a.ts",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-yaml-autoapprove",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "agent config auto-approves tool calls",
+   "files": {
+    "agent.yaml": "agent:\n  llm: claude\n  auto_approve: true\n"
+   },
+   "expect": [
+    [
+     "agent.yaml",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-sql-quoted-fstring-dq",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "quoted placeholder inside f-string (double-quoted outer)",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f(cur):\n    n = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    cur.execute(f\"SELECT * FROM t WHERE name = '{n}'\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-sql-quoted-fstring-sq",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "quoted placeholder inside single-quoted f-string",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\ndef f(cur):\n    n = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    cur.execute(f'SELECT * FROM t WHERE name = \"{n}\"')\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-safe-named-variable",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "a variable merely named safe/allowed is not sanitised",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\ndef f():\n    out = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    safe = out.strip()\n    os.system(safe)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "ai001-pos-unenforced-membership",
+   "rule": "SEC-AI-001",
+   "kind": "positive",
+   "note": "membership test with no enforcement does not validate",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\nALLOWED = ['ls']\ndef f():\n    out = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    if out in ALLOWED:\n        pass\n    os.system(out)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "ai001-neg-shlex-quote",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "shell-quoted model output",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os, shlex\ndef f():\n    out = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    os.system('ls ' + shlex.quote(out))\n"
+   }
+  },
+  {
+   "id": "ai001-neg-int-cast",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "integer cast constrains the value",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\ndef f():\n    out = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    out = int(out)\n    os.system('sleep %d' % out)\n"
+   }
+  },
+  {
+   "id": "ai001-neg-js-includes-guard",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "enforced allow-list includes() guard in JS",
+   "files": {
+    "a.js": "import OpenAI from 'openai';\nimport { execSync } from 'child_process';\nconst ALLOWED = ['status'];\nasync function f(c) {\n  const r = await client.chat.completions.create({model: 'm'});\n  const cmd = r.choices[0].message.content;\n  if (!ALLOWED.includes(cmd)) throw new Error('no');\n  execSync(cmd);\n}\n"
+   }
+  },
+  {
+   "id": "ai001-neg-positive-membership-guard",
+   "rule": "SEC-AI-001",
+   "kind": "negative",
+   "note": "sink inside an `if x in ALLOWED:` block",
+   "files": {
+    "a.py": "from openai import OpenAI\nclient = OpenAI()\nimport os\nALLOWED_CMDS = ['ls']\ndef f():\n    out = client.chat.completions.create(model='m', messages=[]).choices[0].message.content\n    if out in ALLOWED_CMDS:\n        os.system(out)\n"
+   }
+  },
+  {
+   "id": "ai002-pos-caret-range",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "caret range is not an exact pin",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"pkg@^1.2.0\"]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     ".mcp.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ai002-pos-tilde-and-gte-range",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "tilde and >= ranges",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"a\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"pkg-a@~1.2\"]\n    },\n    \"b\": {\n      \"command\": \"uvx\",\n      \"args\": [\"pkg-b>=1.0\"]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     ".mcp.json",
+     5
+    ],
+    [
+     ".mcp.json",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "ai002-pos-dist-tag-next",
+   "rule": "SEC-AI-002",
+   "kind": "positive",
+   "note": "mutable dist-tag",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"pkg@next\"]\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     ".mcp.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ai002-neg-git-sha-pin",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "uvx git source pinned to a 40-hex commit",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"uvx\",\n      \"args\": [\"--from\", \"git+https://example.test/org/srv.git@0123456789abcdef0123456789abcdef01234567\", \"srv\"]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai002-neg-exact-prerelease",
+   "rule": "SEC-AI-002",
+   "kind": "negative",
+   "note": "exact pre-release version counts as pinned",
+   "files": {
+    ".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"pkg@1.2.3-beta.1\"]\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "ai003-pos-approval-other-function",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "approval in an unrelated function does not cover this shell tool",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\ndef build():\n    return [ShellTool()]\ndef confirm(x):\n    return approve(x)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-require-approval-false",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "approval identifier assigned False is not approval",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nrequire_approval = False\ntools = [ShellTool()]\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-sandbox-mode-none",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "sandbox identifier set to none is not isolation",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nsandbox_mode = 'none'\ntools = [PythonREPLTool()]\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai003-pos-sandbox-import-word",
+   "rule": "SEC-AI-003",
+   "kind": "positive",
+   "note": "importing a module named sandbox_* is not isolation",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\nimport sandbox_escape_tools\ntools = [BashTool()]\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai003-neg-approval-same-function",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "approval marker in the same function",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\ndef build(cb):\n    t = ShellTool()\n    return initialize_agent([t], interrupt_before=['tools'])\n"
+   }
+  },
+  {
+   "id": "ai003-neg-sandbox-same-function",
+   "rule": "SEC-AI-003",
+   "kind": "negative",
+   "note": "explicit docker isolation in the same function",
+   "files": {
+    "a.py": "from langchain.agents import initialize_agent\ndef build():\n    t = ShellTool(executor=DockerExecutor(image='x'))\n    runner = docker.run(t)\n    return t\n"
+   }
+  },
+  {
+   "id": "ai004-neg-remote-code-false",
+   "rule": "SEC-AI-004",
+   "kind": "negative",
+   "note": "trust_remote_code explicitly False",
+   "files": {
+    "a.py": "from transformers import AutoModel\nm = AutoModel.from_pretrained('x', revision='0123456789abcdef0123456789abcdef01234567', trust_remote_code=False)\n"
+   }
+  },
+  {
+   "id": "ai004-neg-torch-weights-only",
+   "rule": "SEC-AI-004",
+   "kind": "negative",
+   "note": "torch.load with weights_only=True after a download",
+   "files": {
+    "a.py": "import torch, requests\ndef f(u):\n    requests.get(u)\n    return torch.load('w.pt', weights_only=True)\n"
+   }
+  },
+  {
+   "id": "ai004-neg-local-pickle-no-download",
+   "rule": "SEC-AI-004",
+   "kind": "negative",
+   "note": "pickle of a local cache with no download in the function",
+   "files": {
+    "a.py": "import pickle\ndef f():\n    with open('cache.pkl','rb') as fh:\n        return pickle.load(fh)\n"
+   }
+  },
+  {
+   "id": "ai004-neg-comment-and-string",
+   "rule": "SEC-AI-004",
+   "kind": "negative",
+   "note": "trust_remote_code=True only in comment and string",
+   "files": {
+    "a.py": "# AutoModel.from_pretrained(x, trust_remote_code=True)\nmsg = 'never pass trust_remote_code=True'\n"
+   }
+  },
+  {
+   "id": "ai004-neg-test-file",
+   "rule": "SEC-AI-004",
+   "kind": "negative",
+   "note": "test code is skipped",
+   "files": {
+    "tests/test_m.py": "def test_x():\n    load(trust_remote_code=True)\n"
+   }
+  },
+  {
+   "id": "ai004-pos-trust-remote-code",
+   "rule": "SEC-AI-004",
+   "kind": "positive",
+   "note": "trust_remote_code=True",
+   "files": {
+    "a.py": "from transformers import AutoModel\nm = AutoModel.from_pretrained(\n    'org/model', trust_remote_code=True)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ai004-pos-pickle-downloaded",
+   "rule": "SEC-AI-004",
+   "kind": "positive",
+   "note": "pickle load in function that downloads",
+   "files": {
+    "a.py": "import pickle, requests\ndef f(u):\n    b = requests.get(u).content\n    return pickle.loads(b)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "ai004-pos-torch-weights-only-false",
+   "rule": "SEC-AI-004",
+   "kind": "positive",
+   "note": "explicit weights_only=False",
+   "files": {
+    "a.py": "import torch\nw = torch.load('m.pt', weights_only=False)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ai004-pos-joblib-hub",
+   "rule": "SEC-AI-004",
+   "kind": "positive",
+   "note": "joblib load of an artifact fetched from the hub",
+   "files": {
+    "a.py": "import joblib\nfrom huggingface_hub import hf_hub_download\ndef f():\n    p = hf_hub_download('org/m', 'm.joblib')\n    return joblib.load(p)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     5
+    ]
+   ]
+  }
+ ]
+}

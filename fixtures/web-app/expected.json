@@ -1,0 +1,156 @@
+{
+  "vulnerable": {
+    "SEC-WEB-001": [
+      [
+        "public/index.html",
+        12
+      ],
+      [
+        "src/app.py",
+        12
+      ],
+      [
+        "src/app.py",
+        23
+      ],
+      [
+        "src/server.js",
+        14
+      ],
+      [
+        "src/server.js",
+        21
+      ]
+    ],
+    "SEC-WEB-002": [
+      [
+        "public/index.html",
+        10
+      ],
+      [
+        "public/index.html",
+        11
+      ],
+      [
+        "src/Card.vue",
+        2
+      ],
+      [
+        "src/Comment.jsx",
+        4
+      ]
+    ],
+    "SEC-WEB-003": [
+      [
+        ".env",
+        1
+      ],
+      [
+        "src/app.py",
+        11
+      ],
+      [
+        "src/app.py",
+        51
+      ]
+    ],
+    "SEC-WEB-004": [
+      [
+        "src/headers.js",
+        2
+      ],
+      [
+        "src/server.js",
+        12
+      ]
+    ],
+    "SEC-WEB-005": [
+      [
+        "src/app.py",
+        36
+      ],
+      [
+        "src/app.py",
+        37
+      ],
+      [
+        "src/server.js",
+        26
+      ],
+      [
+        "src/server.js",
+        30
+      ]
+    ],
+    "SEC-WEB-006": [
+      [
+        "src/app.py",
+        30
+      ],
+      [
+        "src/server.js",
+        38
+      ]
+    ],
+    "SEC-WEB-007": [
+      [
+        "Dockerfile",
+        3
+      ],
+      [
+        "src/server.js",
+        42
+      ]
+    ],
+    "SEC-WEB-008": [
+      [
+        "src/app.py",
+        16
+      ],
+      [
+        "src/app.py",
+        47
+      ],
+      [
+        "src/server.js",
+        20
+      ],
+      [
+        "src/server.js",
+        45
+      ]
+    ],
+    "SEC-WEB-009": [
+      [
+        "src/app.py",
+        43
+      ],
+      [
+        "src/server.js",
+        34
+      ]
+    ],
+    "SEC-WEB-010": [
+      [
+        "src/app.py",
+        10
+      ],
+      [
+        "src/security.java",
+        3
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-WEB-001",
+    "SEC-WEB-002",
+    "SEC-WEB-003",
+    "SEC-WEB-004",
+    "SEC-WEB-005",
+    "SEC-WEB-006",
+    "SEC-WEB-007",
+    "SEC-WEB-008",
+    "SEC-WEB-009",
+    "SEC-WEB-010"
+  ]
+}

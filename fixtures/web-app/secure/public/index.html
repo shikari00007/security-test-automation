@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head><title>Demo</title></head>
+<body>
+<div id="out"></div>
+<script>
+  const params = new URLSearchParams(location.search);
+  document.getElementById('out').textContent = params.get('msg');
+  document.getElementById('out').innerHTML = DOMPurify.sanitize(params.get('title'));
+  document.write('<hr>');
+</script>
+</body>
+</html>

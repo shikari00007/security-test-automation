@@ -1,0 +1,224 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-IOS-001",
+      "domain": "ios",
+      "title": "App Transport Security disabled (NSAllowsArbitraryLoads)",
+      "category": "Network",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "Info.plist"
+        ]
+      },
+      "expected_secure_behavior": "ATS stays enabled; any exception is narrowly scoped to a named domain.",
+      "remediation": "Remove NSAllowsArbitraryLoads or set it to false, serve endpoints over TLS 1.2+, and use NSExceptionDomains only for documented legacy hosts.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-NETWORK-1"
+        ],
+        "cwe": [
+          "CWE-319"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M5 Insecure Communication"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-IOS-002",
+      "domain": "ios",
+      "title": "get-task-allow entitlement enabled",
+      "category": "Resilience / build",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.entitlements"
+        ]
+      },
+      "expected_secure_behavior": "Distribution builds do not carry get-task-allow=true.",
+      "remediation": "Ensure release/distribution provisioning profiles and entitlements set get-task-allow to false (it is only injected for development signing).",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-RESILIENCE-4"
+        ],
+        "cwe": [
+          "CWE-489"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M7 Insufficient Binary Protections"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-IOS-003",
+      "domain": "ios",
+      "title": "Insecure Keychain accessibility or secrets in UserDefaults",
+      "category": "Storage",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.swift",
+          "*.m",
+          "*.mm"
+        ]
+      },
+      "expected_secure_behavior": "Secrets are stored in the Keychain with WhenUnlocked/AfterFirstUnlock ThisDeviceOnly accessibility, never in UserDefaults.",
+      "remediation": "Replace kSecAttrAccessibleAlways* with kSecAttrAccessibleWhenUnlockedThisDeviceOnly (or AfterFirstUnlockThisDeviceOnly when background access is required) and move tokens and passwords out of UserDefaults into the Keychain.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-STORAGE-1"
+        ],
+        "cwe": [
+          "CWE-312",
+          "CWE-522"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M9 Insecure Data Storage"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-IOS-004",
+      "domain": "ios",
+      "title": "Deprecated UIWebView or WKWebView file-URL access preferences",
+      "category": "Platform interaction",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.swift",
+          "*.m",
+          "*.mm",
+          "*.h"
+        ]
+      },
+      "expected_secure_behavior": "Only WKWebView is used and file-URL access preferences stay at their secure defaults.",
+      "remediation": "Migrate UIWebView to WKWebView, remove allowFileAccessFromFileURLs / allowUniversalAccessFromFileURLs overrides and load local content with loadFileURL(_:allowingReadAccessTo:) scoped to one directory.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-PLATFORM-2"
+        ],
+        "cwe": [
+          "CWE-749"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M4 Insufficient Input/Output Validation"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-IOS-050",
+      "domain": "ios",
+      "title": "URL scheme and universal link hijack validation",
+      "category": "Platform interaction",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Sensitive flows use verified universal links and validate all URL scheme input and callers.",
+      "remediation": "Prefer universal links with a correct apple-app-site-association, validate and sanitise every URL parameter, and never pass tokens via custom URL schemes. Verify on an authorized test device.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-PLATFORM-1"
+        ],
+        "cwe": [
+          "CWE-939"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-IOS-051",
+      "domain": "ios",
+      "title": "Runtime binary protections review (jailbreak detection, anti-tamper)",
+      "category": "Resilience",
+      "mode": "manual",
+      "executor": "none",
+      "severity": "low",
+      "confidence": "low",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Binary protections match the app's risk profile and are documented, with the limits of client-side detection understood.",
+      "remediation": "Review jailbreak, debugger and integrity detection against the app's threat model; treat them as defence in depth and keep sensitive decisions server-side.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-RESILIENCE-1",
+          "MASVS-RESILIENCE-2"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

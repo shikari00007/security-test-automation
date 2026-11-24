@@ -1,0 +1,7 @@
+# How results are trusted
+
+States are separate fields: `status` (planned | not_applicable | blocked | deferred | executed), `outcome` (pass | fail | inconclusive, only when executed), finding `status` (candidate -> confirmed | needs_validation | rejected).
+
+**Executed means the engine invoked a registered rule and recorded the SHA-256 of every file the rule actually read through its confined context.** `security-skills verify` rejects: unregistered check IDs; `executed` without adapter/assets/timestamps; checks with no automated implementation marked executed; `fail` without evidence; outcomes on non-executed checks; broken hash chain / altered manifest; asset hashes or evidence line fingerprints that do not match the target files. A non-empty evidence string proves nothing. `--hmac-key-env` adds a keyed signature; without it the manifest is tamper-*evident*, not forgery-proof (anyone can recompute plain hashes).
+
+**Finding verification** (`audit` does it by default; `verify --findings` re-does it): fresh re-read of the evidence line, fresh re-execution of the rule on a new context, comment/test-path context checks. `confirmed` = high-confidence rule reproduced independently in non-test code. It is automated, uses the same rule logic, and is **not** a proof of exploitability or a human review - medium/low-confidence results stay `needs_validation`. For real independence use skill `security-finding-validation` (fresh-context verifier given only the evidence).

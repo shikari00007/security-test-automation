@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.1",
+  "domains": [
+    {"id": "web", "label": "Web Application Security", "classification": "core", "conditional": false},
+    {"id": "api", "label": "API Security", "classification": "core", "conditional": false},
+    {"id": "android", "label": "Android Security", "classification": "core", "conditional": false},
+    {"id": "ios", "label": "iOS Security", "classification": "core", "conditional": false},
+    {"id": "desktop", "label": "Thick Client / Desktop Security", "classification": "core", "conditional": false},
+    {"id": "supply-chain", "label": "Supply Chain / DevSecOps Security", "classification": "core", "conditional": false},
+    {"id": "cloud-kubernetes", "label": "Cloud & Kubernetes Security", "classification": "core-conditional", "conditional": true},
+    {"id": "ai-llm", "label": "AI / LLM Application Security", "classification": "core-conditional", "conditional": true}
+  ]
+}

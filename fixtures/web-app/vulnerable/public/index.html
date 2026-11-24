@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head><title>Demo</title></head>
+<body>
+<div id="out"></div>
+<script>
+  // Safe: static markup
+  document.getElementById('out').innerHTML = '<b>hello</b>';
+  const params = new URLSearchParams(location.search);
+  document.getElementById('out').innerHTML = params.get('msg');
+  document.write(params.get('title'));
+  document.cookie = "session_id=" + params.get('sid');
+</script>
+</body>
+</html>

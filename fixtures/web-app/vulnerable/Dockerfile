@@ -1,0 +1,3 @@
+FROM python:3.12-slim
+COPY . /app
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0

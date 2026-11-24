@@ -1,0 +1,9 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+.venv/
+security-artifacts/
+artifacts/
+security-plan.json
+*.egg-info/
+build/

@@ -1,0 +1,10 @@
+{
+  "name": "vuln-desktop",
+  "version": "1.0.0",
+  "main": "main.js",
+  "build": {
+    "appId": "com.example.vulndesktop",
+    "publish": [{ "provider": "generic", "url": "http://updates.example.com/releases" }]
+  },
+  "devDependencies": { "electron": "31.0.0", "electron-builder": "24.13.3" }
+}

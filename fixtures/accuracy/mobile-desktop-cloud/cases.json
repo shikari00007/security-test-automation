@@ -1,0 +1,2231 @@
+{
+ "cases": [
+  {
+   "id": "and001-neg-exported-false",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "intent-filter present but exported=false",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application android:allowBackup=\"false\">\n        <service android:name=\".Sync\" android:exported=\"false\">\n            <intent-filter><action android:name=\"com.example.SYNC\"/></intent-filter>\n        </service>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-launcher",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "launcher activity must be exported",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".Main\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n        </activity>\n        <activity-alias android:name=\".Alias\" android:targetActivity=\".Main\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n        </activity-alias>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-permission-protected",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "exported but guarded by signature permission / read+write permissions",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <service android:name=\".Bind\" android:exported=\"true\"\n            android:permission=\"android.permission.BIND_JOB_SERVICE\">\n            <intent-filter><action android:name=\"x.BIND\"/></intent-filter>\n        </service>\n        <receiver android:permission=\"com.example.permission.INTERNAL\" android:exported=\"true\" android:name=\".R\">\n            <intent-filter><action android:name=\"x.R\"/></intent-filter>\n        </receiver>\n        <provider android:name=\".P\" android:authorities=\"com.example.p\" android:exported=\"true\"\n            android:readPermission=\"com.example.READ\" android:writePermission=\"com.example.WRITE\"/>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-no-filter-default",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "no intent-filter and no exported attr => not exported; commented component ignored",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <service android:name=\".Internal\"/>\n        <receiver android:name=\".Internal2\"/>\n        <!-- <service android:name=\".Old\" android:exported=\"true\"/> -->\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-tools-node-remove",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "tools:node=remove strips a library component in the merged manifest",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <service android:name=\"com.lib.ExportedSvc\" android:exported=\"true\" tools:node=\"remove\"/>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-leanback-launcher",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "TV/leanback launcher activity must be exported",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".TvMain\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LEANBACK_LAUNCHER\"/>\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-debug-variant",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "debug-only source set manifest is not shipped in release builds",
+   "files": {
+    "app/src/debug/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".DebugMenu\" android:exported=\"true\"/>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-neg-system-broadcast",
+   "rule": "SEC-AND-001",
+   "kind": "negative",
+   "note": "receiver whose only actions are protected system broadcasts (only the OS can send them)",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <receiver android:name=\".Boot\" android:exported=\"true\">\n            <intent-filter><action android:name=\"android.intent.action.BOOT_COMPLETED\"/></intent-filter>\n        </receiver>\n    </application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and001-pos-explicit-service",
+   "rule": "SEC-AND-001",
+   "kind": "positive",
+   "note": "explicit exported=true service, no filter",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <service android:name=\".Open\" android:exported=\"true\"/>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "and001-pos-implicit-reversed-attrs",
+   "rule": "SEC-AND-001",
+   "kind": "positive",
+   "note": "implicit export via filter; attrs in unusual order; multi-line start tag reports start line",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <receiver\n            android:enabled=\"true\"\n            android:name=\".Rx\">\n            <intent-filter>\n                <action android:name=\"com.example.CUSTOM\"/>\n            </intent-filter>\n        </receiver>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "and001-pos-provider-and-deeplink",
+   "rule": "SEC-AND-001",
+   "kind": "positive",
+   "note": "unprotected provider, half-protected provider, browsable deeplink activity",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <provider android:authorities=\"a.b\" android:exported=\"true\" android:name=\".Prov\"/>\n        <provider android:name=\".P2\" android:authorities=\"a.c\" android:exported=\"true\"\n            android:readPermission=\"a.READ\"/>\n        <activity android:name=\".Deep\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.VIEW\"/>\n                <category android:name=\"android.intent.category.BROWSABLE\"/>\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     6
+    ],
+    [
+     "app/src/main/AndroidManifest.xml",
+     7
+    ],
+    [
+     "app/src/main/AndroidManifest.xml",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "and001-pos-nonlauncher-main-and-custom-receiver",
+   "rule": "SEC-AND-001",
+   "kind": "positive",
+   "note": "non-system action receiver still exposed; launcher exemption must not shield a second activity",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".Main\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n        </activity>\n        <activity android:name=\".Share\" android:exported=\"true\"/>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     12
+    ]
+   ]
+  },
+  {
+   "id": "and002-neg-false",
+   "rule": "SEC-AND-002",
+   "kind": "negative",
+   "note": "debuggable=false",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:debuggable=\"false\" android:allowBackup=\"false\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and002-neg-comment",
+   "rule": "SEC-AND-002",
+   "kind": "negative",
+   "note": "debuggable only in an XML comment",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\">\n    <!-- android:debuggable=\"true\" was removed -->\n</application>\n</manifest>"
+   }
+  },
+  {
+   "id": "and002-neg-absent-and-placeholder",
+   "rule": "SEC-AND-002",
+   "kind": "negative",
+   "note": "absent attr / build-time placeholder resolved by Gradle",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\" android:debuggable=\"${isDebuggable}\"/>\n</manifest>",
+    "lib/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and002-neg-debug-variant",
+   "rule": "SEC-AND-002",
+   "kind": "negative",
+   "note": "src/debug manifest (debug build type only)",
+   "files": {
+    "app/src/debug/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:debuggable=\"true\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and002-neg-other-namespace",
+   "rule": "SEC-AND-002",
+   "kind": "negative",
+   "note": "attribute from a different namespace is not android:debuggable",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\" tools:debuggable=\"true\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and002-pos-simple",
+   "rule": "SEC-AND-002",
+   "kind": "positive",
+   "note": "single-line",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:debuggable=\"true\" android:allowBackup=\"false\"/>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and002-pos-multiline-attr-order",
+   "rule": "SEC-AND-002",
+   "kind": "positive",
+   "note": "attribute on a later line; reports attribute line",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application\n    android:label=\"App\"\n    android:allowBackup=\"false\"\n    android:debuggable=\"true\"\n    android:icon=\"@mipmap/ic\"/>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "and002-pos-flavor-manifest",
+   "rule": "SEC-AND-002",
+   "kind": "positive",
+   "note": "release/flavor manifest in a different dir",
+   "files": {
+    "app/src/prod/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application\n    android:allowBackup=\"false\" android:debuggable=\"true\">\n</application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/prod/AndroidManifest.xml",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "and003-neg-false",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "allowBackup=false",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-neg-placeholder",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "manifest placeholder",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"${allowBackup}\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-neg-library-empty-application",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "library manifest: bare <application/> without attrs or components; app module decides",
+   "files": {
+    "lib/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-neg-no-application",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "manifest with only permissions has no application element",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-neg-debug-variant",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "debug source set",
+   "files": {
+    "app/src/debug/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"true\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-pos-true",
+   "rule": "SEC-AND-003",
+   "kind": "positive",
+   "note": "explicit true",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"true\"/>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and003-pos-default",
+   "rule": "SEC-AND-003",
+   "kind": "positive",
+   "note": "attribute missing => defaults to true; reports application line",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application android:label=\"x\">\n        <activity android:name=\".A\" android:exported=\"false\"/>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and003-pos-multiline",
+   "rule": "SEC-AND-003",
+   "kind": "positive",
+   "note": "multi-line, reports attribute line",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application\n    android:name=\".App\"\n    android:allowBackup=\"true\"\n    tools:replace=\"android:allowBackup\">\n</application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "and004-neg-manifest-false",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "usesCleartextTraffic=false",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:usesCleartextTraffic=\"false\" android:allowBackup=\"false\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and004-neg-debug-overrides",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "cleartext only under debug-overrides",
+   "files": {
+    "app/src/main/res/xml/network_security_config.xml": "<network-security-config>\n    <base-config cleartextTrafficPermitted=\"false\"/>\n    <debug-overrides cleartextTrafficPermitted=\"true\">\n        <trust-anchors><certificates src=\"user\"/></trust-anchors>\n    </debug-overrides>\n</network-security-config>"
+   }
+  },
+  {
+   "id": "and004-neg-localhost-scoped",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "narrow domain-config for loopback/emulator host only",
+   "files": {
+    "app/src/main/res/xml/network_security_config.xml": "<network-security-config>\n    <domain-config cleartextTrafficPermitted=\"true\">\n        <domain includeSubdomains=\"false\">localhost</domain>\n        <domain>10.0.2.2</domain>\n        <domain>127.0.0.1</domain>\n    </domain-config>\n</network-security-config>"
+   }
+  },
+  {
+   "id": "and004-neg-unrelated-xml",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "xml under res/xml that is not a network-security-config",
+   "files": {
+    "app/src/main/res/xml/prefs.xml": "<PreferenceScreen cleartextTrafficPermitted=\"true\"/>"
+   }
+  },
+  {
+   "id": "and004-neg-comment",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "cleartext only in a comment",
+   "files": {
+    "app/src/main/res/xml/network_security_config.xml": "<network-security-config>\n    <!-- <base-config cleartextTrafficPermitted=\"true\"/> -->\n    <base-config cleartextTrafficPermitted=\"false\"/>\n</network-security-config>"
+   }
+  },
+  {
+   "id": "and004-neg-debug-variant-manifest",
+   "rule": "SEC-AND-004",
+   "kind": "negative",
+   "note": "src/debug manifest allowing cleartext for dev servers",
+   "files": {
+    "app/src/debug/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:usesCleartextTraffic=\"true\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and004-pos-manifest",
+   "rule": "SEC-AND-004",
+   "kind": "positive",
+   "note": "manifest attribute",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n<application android:allowBackup=\"false\" android:usesCleartextTraffic=\"true\"/>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and004-pos-base-config",
+   "rule": "SEC-AND-004",
+   "kind": "positive",
+   "note": "base-config permits cleartext",
+   "files": {
+    "app/src/main/res/xml/network_security_config.xml": "<network-security-config>\n    <base-config cleartextTrafficPermitted=\"true\">\n        <trust-anchors><certificates src=\"system\"/></trust-anchors>\n    </base-config>\n</network-security-config>"
+   },
+   "expect": [
+    [
+     "app/src/main/res/xml/network_security_config.xml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "and004-pos-domain-config-prod",
+   "rule": "SEC-AND-004",
+   "kind": "positive",
+   "note": "domain-config for a real production domain",
+   "files": {
+    "res/xml/network_security_config.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<network-security-config>\n    <domain-config\n        cleartextTrafficPermitted=\"true\">\n        <domain includeSubdomains=\"true\">api.example.com</domain>\n    </domain-config>\n</network-security-config>"
+   },
+   "expect": [
+    [
+     "res/xml/network_security_config.xml",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "and005-neg-js-only",
+   "rule": "SEC-AND-005",
+   "kind": "negative",
+   "note": "JavaScript enabled but no bridge or file access",
+   "files": {
+    "A.java": "class A { void f(WebView w){ w.getSettings().setJavaScriptEnabled(true); w.loadUrl(\"https://example.com\"); } }"
+   }
+  },
+  {
+   "id": "and005-neg-bridge-js-disabled",
+   "rule": "SEC-AND-005",
+   "kind": "negative",
+   "note": "bridge registered but JS never enabled",
+   "files": {
+    "A.kt": "class A { fun f(w: WebView) {\n    w.settings.javaScriptEnabled = false\n    w.addJavascriptInterface(Bridge(), \"b\")\n} }"
+   }
+  },
+  {
+   "id": "and005-neg-file-access-false",
+   "rule": "SEC-AND-005",
+   "kind": "negative",
+   "note": "file access explicitly disabled",
+   "files": {
+    "A.java": "class A { void f(WebView w){\n  WebSettings s = w.getSettings();\n  s.setJavaScriptEnabled(true);\n  s.setAllowFileAccess(false);\n  s.setAllowUniversalAccessFromFileURLs(false);\n  s.setAllowFileAccessFromFileURLs(false);\n} }"
+   }
+  },
+  {
+   "id": "and005-neg-comments-and-strings",
+   "rule": "SEC-AND-005",
+   "kind": "negative",
+   "note": "risky calls only in comments / string literals",
+   "files": {
+    "A.kt": "class A { fun f(w: WebView) {\n    w.settings.javaScriptEnabled = true\n    // w.addJavascriptInterface(Bridge(), \"b\")\n    /* w.settings.allowFileAccess = true */\n    Log.d(\"T\", \"never call addJavascriptInterface( here\")\n} }"
+   }
+  },
+  {
+   "id": "and005-neg-test-source-set",
+   "rule": "SEC-AND-005",
+   "kind": "negative",
+   "note": "instrumentation test helper in androidTest",
+   "files": {
+    "app/src/androidTest/java/com/x/WvTest.java": "class WvTest { void f(WebView w){\n  w.getSettings().setJavaScriptEnabled(true);\n  w.addJavascriptInterface(new Fake(), \"t\");\n} }"
+   }
+  },
+  {
+   "id": "and005-pos-java-bridge",
+   "rule": "SEC-AND-005",
+   "kind": "positive",
+   "note": "Java bridge",
+   "files": {
+    "A.java": "class A { void f(WebView w){\n  w.getSettings().setJavaScriptEnabled(true);\n  w.addJavascriptInterface(new Bridge(), \"android\");\n} }"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "and005-pos-kotlin-apply-universal",
+   "rule": "SEC-AND-005",
+   "kind": "positive",
+   "note": "Kotlin apply block, universal file access from file URLs",
+   "files": {
+    "A.kt": "class A { fun f(w: WebView) {\n    w.settings.apply {\n        javaScriptEnabled = true\n        allowUniversalAccessFromFileURLs = true\n        allowFileAccessFromFileURLs = true\n    }\n} }"
+   },
+   "expect": [
+    [
+     "A.kt",
+     4
+    ],
+    [
+     "A.kt",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and005-pos-setallow-file",
+   "rule": "SEC-AND-005",
+   "kind": "positive",
+   "note": "setAllowFileAccess(true) with JS",
+   "files": {
+    "B.java": "class B { void f(WebView w){\n  WebSettings s = w.getSettings();\n  s.setJavaScriptEnabled( true );\n  s.setAllowFileAccess(true);\n  s.setAllowUniversalAccessFromFileURLs(true);\n} }"
+   },
+   "expect": [
+    [
+     "B.java",
+     4
+    ],
+    [
+     "B.java",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "and006-neg-private-mode",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "MODE_PRIVATE and benign keys",
+   "files": {
+    "A.java": "class A { void f(Context c){\n  SharedPreferences p = c.getSharedPreferences(\"p\", Context.MODE_PRIVATE);\n  p.edit().putString(\"username\", \"bob\").putString(\"theme\", \"dark\").apply();\n} }"
+   }
+  },
+  {
+   "id": "and006-neg-encrypted-prefs",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "secrets stored through EncryptedSharedPreferences",
+   "files": {
+    "A.kt": "class A { fun f(c: Context) {\n    val k = MasterKey.Builder(c).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()\n    val p = EncryptedSharedPreferences.create(c, \"s\", k, a, b)\n    p.edit().putString(\"auth_token\", t).apply()\n} }"
+   }
+  },
+  {
+   "id": "and006-neg-comment-and-string",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "world-readable constant only in comment / message string",
+   "files": {
+    "A.java": "class A { void f(){\n  // MODE_WORLD_READABLE was removed in API 24\n  String msg = \"do not use MODE_WORLD_READABLE\";\n} }"
+   }
+  },
+  {
+   "id": "and006-neg-nonsecret-keys",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "keys that merely mention password/token words but store non-secrets",
+   "files": {
+    "A.kt": "class A { fun f(p: SharedPreferences) {\n    p.edit().putString(\"password_hint\", hint).apply()\n    p.edit().putString(\"token_type\", \"Bearer\").apply()\n    p.edit().putString(\"password_policy_url\", url).apply()\n    p.edit().putString(\"api_key_label\", label).apply()\n} }"
+   }
+  },
+  {
+   "id": "and006-neg-test-source-set",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "unit test fixture",
+   "files": {
+    "app/src/test/java/com/x/PrefsTest.java": "class PrefsTest { void t(){ prefs.edit().putString(\"password\", \"x\").apply(); ctx.openFileOutput(\"f\", Context.MODE_WORLD_READABLE); } }"
+   }
+  },
+  {
+   "id": "and006-pos-world-readable",
+   "rule": "SEC-AND-006",
+   "kind": "positive",
+   "note": "world-readable file mode",
+   "files": {
+    "A.java": "class A { void f(Context c) throws Exception {\n  c.openFileOutput(\"x\", Context.MODE_WORLD_READABLE);\n  c.openFileOutput(\"y\", Context.MODE_WORLD_WRITEABLE);\n} }"
+   },
+   "expect": [
+    [
+     "A.java",
+     2
+    ],
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "and006-pos-java-secret-prefs",
+   "rule": "SEC-AND-006",
+   "kind": "positive",
+   "note": "plaintext token in prefs (Java)",
+   "files": {
+    "A.java": "class A { void f(SharedPreferences p, String t){\n  p.edit().putString(\"auth_token\", t).commit();\n} }"
+   },
+   "expect": [
+    [
+     "A.java",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "and006-pos-kotlin-secret-prefs",
+   "rule": "SEC-AND-006",
+   "kind": "positive",
+   "note": "plaintext password/api key in prefs (Kotlin)",
+   "files": {
+    "A.kt": "class A { fun f(p: SharedPreferences) {\n    p.edit().putString(\"user_password\", pw).apply()\n    p.edit { putString(\"API_KEY\", k) }\n} }"
+   },
+   "expect": [
+    [
+     "A.kt",
+     2
+    ],
+    [
+     "A.kt",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "ios001-neg-false",
+   "rule": "SEC-IOS-001",
+   "kind": "negative",
+   "note": "arbitrary loads false",
+   "files": {
+    "App/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsArbitraryLoads</key>\n\t\t<false/>\n\t</dict>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios001-neg-narrow-exception",
+   "rule": "SEC-IOS-001",
+   "kind": "negative",
+   "note": "per-domain insecure HTTP exception and local networking only",
+   "files": {
+    "App/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsLocalNetworking</key>\n\t\t<true/>\n\t\t<key>NSExceptionDomains</key>\n\t\t<dict>\n\t\t\t<key>legacy.example.com</key>\n\t\t\t<dict>\n\t\t\t\t<key>NSExceptionAllowsInsecureHTTPLoads</key>\n\t\t\t\t<true/>\n\t\t\t\t<key>NSIncludesSubdomains</key>\n\t\t\t\t<false/>\n\t\t\t</dict>\n\t\t</dict>\n\t</dict>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios001-neg-web-content-only",
+   "rule": "SEC-IOS-001",
+   "kind": "negative",
+   "note": "NSAllowsArbitraryLoadsInWebContent / ForMedia are different, scoped keys",
+   "files": {
+    "App/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsArbitraryLoadsInWebContent</key>\n\t\t<true/>\n\t\t<key>NSAllowsArbitraryLoadsForMedia</key>\n\t\t<true/>\n\t</dict>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios001-neg-comment",
+   "rule": "SEC-IOS-001",
+   "kind": "negative",
+   "note": "key only inside an XML comment",
+   "files": {
+    "App/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<!--\n\t<key>NSAllowsArbitraryLoads</key>\n\t<true/>\n\t-->\n\t<key>CFBundleName</key>\n\t<string>App</string>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios001-neg-binary-plist",
+   "rule": "SEC-IOS-001",
+   "kind": "negative",
+   "note": "binary plist cannot be analysed => no finding (inconclusive)",
+   "files": {
+    "App/Info.plist": "bplist00\u0000\u0001"
+   }
+  },
+  {
+   "id": "ios001-pos-standard",
+   "rule": "SEC-IOS-001",
+   "kind": "positive",
+   "note": "key/true on separate lines",
+   "files": {
+    "App/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>NSAllowsArbitraryLoads</key>\n\t\t<true/>\n\t</dict>\n</dict>\n</plist>"
+   },
+   "expect": [
+    [
+     "App/Info.plist",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "ios001-pos-oneline",
+   "rule": "SEC-IOS-001",
+   "kind": "positive",
+   "note": "key and value on one line, spaced true",
+   "files": {
+    "Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n<key>NSAllowsArbitraryLoads</key><true />\n</dict>\n</plist>"
+   },
+   "expect": [
+    [
+     "Info.plist",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ios001-pos-blank-line-and-crlf",
+   "rule": "SEC-IOS-001",
+   "kind": "positive",
+   "note": "blank line between key and value; CRLF line endings",
+   "files": {
+    "Sub/Info.plist": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\r\n<plist version=\"1.0\">\r\n<dict>\r\n    <key>NSAppTransportSecurity</key>\r\n    <dict>\r\n        <key>NSAllowsArbitraryLoads</key>\r\n\r\n        <true/>\r\n    </dict>\r\n</dict>\r\n</plist>"
+   },
+   "expect": [
+    [
+     "Sub/Info.plist",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "ios002-neg-false",
+   "rule": "SEC-IOS-002",
+   "kind": "negative",
+   "note": "false",
+   "files": {
+    "App/App.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>get-task-allow</key>\n\t<false/>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios002-neg-debug-entitlements",
+   "rule": "SEC-IOS-002",
+   "kind": "negative",
+   "note": "Debug-configuration entitlements file legitimately sets get-task-allow",
+   "files": {
+    "App/AppDebug.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>get-task-allow</key>\n\t<true/>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios002-neg-comment",
+   "rule": "SEC-IOS-002",
+   "kind": "negative",
+   "note": "only in a comment",
+   "files": {
+    "App/App.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<!-- <key>get-task-allow</key><true/> -->\n\t<key>aps-environment</key>\n\t<string>production</string>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios002-neg-other-entitlement",
+   "rule": "SEC-IOS-002",
+   "kind": "negative",
+   "note": "similar-looking but different entitlement keys",
+   "files": {
+    "App/App.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>com.apple.developer.associated-domains</key>\n\t<array><string>applinks:example.com</string></array>\n\t<key>get-task-allow-not</key>\n\t<true/>\n</dict>\n</plist>"
+   }
+  },
+  {
+   "id": "ios002-pos-standard",
+   "rule": "SEC-IOS-002",
+   "kind": "positive",
+   "note": "release entitlements with true",
+   "files": {
+    "App/App.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>get-task-allow</key>\n\t<true/>\n</dict>\n</plist>"
+   },
+   "expect": [
+    [
+     "App/App.entitlements",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ios002-pos-oneline",
+   "rule": "SEC-IOS-002",
+   "kind": "positive",
+   "note": "single line",
+   "files": {
+    "Release/Prod.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>get-task-allow</key> <true/>\n</dict>\n</plist>"
+   },
+   "expect": [
+    [
+     "Release/Prod.entitlements",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "ios002-pos-after-other-keys",
+   "rule": "SEC-IOS-002",
+   "kind": "positive",
+   "note": "mixed with other keys, space indent",
+   "files": {
+    "App.entitlements": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>aps-environment</key>\n  <string>production</string>\n  <key>get-task-allow</key>\n    <true/>\n  <key>keychain-access-groups</key>\n  <array/>\n</dict>\n</plist>"
+   },
+   "expect": [
+    [
+     "App.entitlements",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "ios003-neg-safe-accessibility",
+   "rule": "SEC-IOS-003",
+   "kind": "negative",
+   "note": "WhenUnlocked / AfterFirstUnlock",
+   "files": {
+    "K.swift": "import Security\nlet a = kSecAttrAccessibleWhenUnlockedThisDeviceOnly\nlet b = kSecAttrAccessibleAfterFirstUnlock\n"
+   }
+  },
+  {
+   "id": "ios003-neg-nonsecret-defaults",
+   "rule": "SEC-IOS-003",
+   "kind": "negative",
+   "note": "UserDefaults with non-secret values or flag-like keys",
+   "files": {
+    "D.swift": "let d = UserDefaults.standard\nd.set(\"dark\", forKey: \"theme\")\nd.set(true, forKey: \"passwordPromptShown\")\nd.set(hint, forKey: \"passwordHint\")\nd.set(\"Bearer\", forKey: \"tokenType\")\n"
+   }
+  },
+  {
+   "id": "ios003-neg-comment-string",
+   "rule": "SEC-IOS-003",
+   "kind": "negative",
+   "note": "constants in comments or strings",
+   "files": {
+    "K.m": "// kSecAttrAccessibleAlways is deprecated\nNSString *s = @\"avoid kSecAttrAccessibleAlways\";\n"
+   }
+  },
+  {
+   "id": "ios003-neg-keychain-wrapper",
+   "rule": "SEC-IOS-003",
+   "kind": "negative",
+   "note": "secret written to Keychain, not defaults",
+   "files": {
+    "K.swift": "KeychainWrapper.standard.set(token, forKey: \"authToken\")\nKeychain.save(password, forKey: \"password\")\n"
+   }
+  },
+  {
+   "id": "ios003-neg-tests",
+   "rule": "SEC-IOS-003",
+   "kind": "negative",
+   "note": "unit-test fixture",
+   "files": {
+    "AppTests/DefaultsTests.swift": "func test() { UserDefaults.standard.set(\"x\", forKey: \"password\") }\n"
+   }
+  },
+  {
+   "id": "ios003-pos-swift-defaults",
+   "rule": "SEC-IOS-003",
+   "kind": "positive",
+   "note": "Swift UserDefaults token",
+   "files": {
+    "D.swift": "func save(_ token: String) {\n    UserDefaults.standard.set(token, forKey: \"authToken\")\n}\n"
+   },
+   "expect": [
+    [
+     "D.swift",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ios003-pos-objc-defaults",
+   "rule": "SEC-IOS-003",
+   "kind": "positive",
+   "note": "ObjC NSUserDefaults password",
+   "files": {
+    "D.m": "- (void)save {\n  [[NSUserDefaults standardUserDefaults] setObject:pw forKey:@\"user_password\"];\n}\n"
+   },
+   "expect": [
+    [
+     "D.m",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ios003-pos-keychain-always",
+   "rule": "SEC-IOS-003",
+   "kind": "positive",
+   "note": "Always accessibility in Swift",
+   "files": {
+    "K.swift": "let q: [String: Any] = [kSecAttrAccessible as String: kSecAttrAccessibleAlways]\nlet r = kSecAttrAccessibleAlwaysThisDeviceOnly\n"
+   },
+   "expect": [
+    [
+     "K.swift",
+     1
+    ],
+    [
+     "K.swift",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ios004-neg-wkwebview",
+   "rule": "SEC-IOS-004",
+   "kind": "negative",
+   "note": "WKWebView only",
+   "files": {
+    "W.swift": "import WebKit\nlet w = WKWebView(frame: .zero)\nw.configuration.preferences.javaScriptEnabled = true\n"
+   }
+  },
+  {
+   "id": "ios004-neg-comment",
+   "rule": "SEC-IOS-004",
+   "kind": "negative",
+   "note": "UIWebView only mentioned in comments / message strings",
+   "files": {
+    "W.swift": "// migrated off UIWebView in v3\n/* UIWebView */\nlet msg = \"UIWebView has been removed\"\n"
+   }
+  },
+  {
+   "id": "ios004-neg-file-access-false",
+   "rule": "SEC-IOS-004",
+   "kind": "negative",
+   "note": "file access prefs set to false",
+   "files": {
+    "W.swift": "cfg.preferences.setValue(false, forKey: \"allowFileAccessFromFileURLs\")\ncfg.setValue(false, forKey: \"allowUniversalAccessFromFileURLs\")\n"
+   }
+  },
+  {
+   "id": "ios004-neg-objc-no",
+   "rule": "SEC-IOS-004",
+   "kind": "negative",
+   "note": "ObjC NO",
+   "files": {
+    "W.m": "[cfg.preferences setValue:@NO forKey:@\"allowFileAccessFromFileURLs\"];\n"
+   }
+  },
+  {
+   "id": "ios004-neg-longer-identifier",
+   "rule": "SEC-IOS-004",
+   "kind": "negative",
+   "note": "identifier that merely contains the word",
+   "files": {
+    "W.swift": "let UIWebViewReplacementLoaded = true\n"
+   }
+  },
+  {
+   "id": "ios004-pos-swift-uiwebview",
+   "rule": "SEC-IOS-004",
+   "kind": "positive",
+   "note": "UIWebView instantiation",
+   "files": {
+    "W.swift": "let web = UIWebView(frame: .zero)\n"
+   },
+   "expect": [
+    [
+     "W.swift",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "ios004-pos-objc-uiwebview",
+   "rule": "SEC-IOS-004",
+   "kind": "positive",
+   "note": "ObjC UIWebView; header decl",
+   "files": {
+    "V.m": "- (void)x {\n  UIWebView *w = [[UIWebView alloc] init];\n}\n",
+    "V.h": "@property (nonatomic, strong) UIWebView *web;\n"
+   },
+   "expect": [
+    [
+     "V.h",
+     1
+    ],
+    [
+     "V.m",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "ios004-pos-file-access",
+   "rule": "SEC-IOS-004",
+   "kind": "positive",
+   "note": "file URL access prefs YES/true for both keys",
+   "files": {
+    "W.swift": "cfg.preferences.setValue(true, forKey: \"allowFileAccessFromFileURLs\")\ncfg.setValue(true, forKey: \"allowUniversalAccessFromFileURLs\")\n",
+    "W.m": "[cfg setValue:@YES forKey:@\"allowUniversalAccessFromFileURLs\"];\n"
+   },
+   "expect": [
+    [
+     "W.m",
+     1
+    ],
+    [
+     "W.swift",
+     1
+    ],
+    [
+     "W.swift",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk001-neg-secure",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "explicit secure prefs",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nnew BrowserWindow({\n  webPreferences: {\n    nodeIntegration: false,\n    contextIsolation: true,\n    sandbox: true,\n    webSecurity: true,\n    preload: path.join(__dirname, 'preload.js'),\n  },\n});\n"
+   }
+  },
+  {
+   "id": "dsk001-neg-comments",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "insecure literals only in comments",
+   "files": {
+    "main.ts": "import { BrowserWindow } from 'electron';\n// never set nodeIntegration: true here\n/* contextIsolation: false would be bad */\nnew BrowserWindow({ webPreferences: { contextIsolation: true } });\n"
+   }
+  },
+  {
+   "id": "dsk001-neg-strings",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "insecure literal inside a log/lint message string",
+   "files": {
+    "audit.js": "const { app, BrowserWindow } = require('electron');\nconsole.warn(\"found nodeIntegration: true in \" + file);\nconst rule = 'webSecurity: false is forbidden';\n"
+   }
+  },
+  {
+   "id": "dsk001-neg-non-electron-file",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "sandbox: false in a non-Electron tooling file",
+   "files": {
+    "jest.config.js": "module.exports = { sandbox: false, nodeIntegration: true };\n"
+   }
+  },
+  {
+   "id": "dsk001-neg-test-fixture",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "Electron test harness under test/ may relax prefs",
+   "files": {
+    "test/helpers/window.js": "const { app, BrowserWindow } = require('electron');\nnew BrowserWindow({ webPreferences: { nodeIntegration: true, contextIsolation: false } });\n"
+   }
+  },
+  {
+   "id": "dsk001-neg-conditional",
+   "rule": "SEC-DSK-001",
+   "kind": "negative",
+   "note": "value is an expression, not literal true",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nnew BrowserWindow({ webPreferences: { nodeIntegration: process.env.E2E === '1' ? false : false } });\n"
+   }
+  },
+  {
+   "id": "dsk001-pos-multiline",
+   "rule": "SEC-DSK-001",
+   "kind": "positive",
+   "note": "classic block",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nnew BrowserWindow({\n  webPreferences: {\n    nodeIntegration: true,\n    contextIsolation: false,\n  },\n});\n"
+   },
+   "expect": [
+    [
+     "main.js",
+     4
+    ],
+    [
+     "main.js",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk001-pos-ts-compact",
+   "rule": "SEC-DSK-001",
+   "kind": "positive",
+   "note": "TS compact, ESM, webSecurity",
+   "files": {
+    "src/main.ts": "import { BrowserWindow } from 'electron'\nconst w = new BrowserWindow({webPreferences:{webSecurity:false}})\n"
+   },
+   "expect": [
+    [
+     "src/main.ts",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk001-pos-quoted-keys-worker",
+   "rule": "SEC-DSK-001",
+   "kind": "positive",
+   "note": "quoted keys and InWorker variant, sandbox false",
+   "files": {
+    "w.mjs": "import { BrowserWindow } from 'electron';\nconst prefs = {\n  'nodeIntegration': true,\n  nodeIntegrationInWorker: true,\n  sandbox: false,\n};\n"
+   },
+   "expect": [
+    [
+     "w.mjs",
+     3
+    ],
+    [
+     "w.mjs",
+     4
+    ],
+    [
+     "w.mjs",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk002-neg-literal-https",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "constant https URL / localhost / file",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nshell.openExternal('https://example.com/help');\nwin.loadURL('http://localhost:3000');\nwin.loadURL(`file://${__dirname}/index.html`);\n"
+   }
+  },
+  {
+   "id": "dsk002-neg-validated",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "URL parsed + protocol allow-list before open",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nipcMain.handle('open', (_e, link) => {\n  const u = new URL(link);\n  if (u.protocol !== 'https:') return;\n  return shell.openExternal(u.toString());\n});\n"
+   }
+  },
+  {
+   "id": "dsk002-neg-forge-constant",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "Electron Forge webpack entry constant / var assigned a literal",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nconst DEV = 'http://localhost:8080';\nwin.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);\nwin.loadURL(DEV);\nconst page = 'file:///opt/app/index.html';\nwin.loadURL(page);\n"
+   }
+  },
+  {
+   "id": "dsk002-neg-mailto-literal",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "literal non-https constant",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nshell.openExternal('mailto:support@example.com');\n"
+   }
+  },
+  {
+   "id": "dsk002-neg-regex-guard",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "anchored https regex guard",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nfunction open(u) {\n  if (!/^https:\\/\\//.test(u)) return;\n  shell.openExternal(u);\n}\n"
+   }
+  },
+  {
+   "id": "dsk002-neg-comment",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "calls only in comments",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\n// shell.openExternal(userUrl)\n/* win.loadURL(remote) */\n"
+   }
+  },
+  {
+   "id": "dsk002-pos-ipc",
+   "rule": "SEC-DSK-002",
+   "kind": "positive",
+   "note": "ipc handler opens renderer-supplied URL",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nipcMain.on('open', (e, url) => {\n  shell.openExternal(url);\n});\n"
+   },
+   "expect": [
+    [
+     "main.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dsk002-pos-window-open-ts",
+   "rule": "SEC-DSK-002",
+   "kind": "positive",
+   "note": "setWindowOpenHandler passes details.url",
+   "files": {
+    "main.ts": "import { shell } from 'electron';\nwin.webContents.setWindowOpenHandler((details) => {\n  shell.openExternal(details.url);\n  return { action: 'deny' };\n});\n"
+   },
+   "expect": [
+    [
+     "main.ts",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dsk002-pos-http-loadurl-variable",
+   "rule": "SEC-DSK-002",
+   "kind": "positive",
+   "note": "plain http remote and unvalidated variable",
+   "files": {
+    "main.js": "const { app, BrowserWindow } = require('electron');\nwin.loadURL('http://app.example.com/start');\nfunction show(target) {\n  win.loadURL(target);\n}\n"
+   },
+   "expect": [
+    [
+     "main.js",
+     2
+    ],
+    [
+     "main.js",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "dsk003-neg-https-feed",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "https feed + verification on",
+   "files": {
+    "main.js": "const { autoUpdater } = require('electron-updater');\nautoUpdater.setFeedURL({ provider: 'generic', url: 'https://updates.example.com' });\n",
+    "electron-builder.yml": "win:\n  verifyUpdateCodeSignature: true\npublish:\n  provider: generic\n  url: https://updates.example.com/\n"
+   }
+  },
+  {
+   "id": "dsk003-neg-localhost-dev-feed",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "dev-app-update.yml pointing at localhost",
+   "files": {
+    "dev-app-update.yml": "provider: generic\nurl: http://localhost:9000/updates\n"
+   }
+  },
+  {
+   "id": "dsk003-neg-package-json-repo-url",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "package.json repository/bugs http urls and an npm publish script are not update feeds",
+   "files": {
+    "package.json": "{\n  \"name\": \"x\",\n  \"scripts\": { \"publish\": \"npm publish\" },\n  \"repository\": { \"type\": \"git\", \"url\": \"http://github.com/example/x.git\" },\n  \"bugs\": { \"url\": \"http://github.com/example/x/issues\" },\n  \"build\": { \"publish\": [{ \"provider\": \"github\" }] }\n}\n"
+   }
+  },
+  {
+   "id": "dsk003-neg-comment",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "disabled flags only in comments",
+   "files": {
+    "main.js": "const { autoUpdater } = require('electron-updater');\n// verifyUpdateCodeSignature: false  (never ship this)\n/* autoUpdater.setFeedURL('http://updates.example.com') */\n"
+   }
+  },
+  {
+   "id": "dsk003-neg-unrelated-url-key",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "svg namespace url in a file that only mentions publish()",
+   "files": {
+    "ui.js": "const ns = { url: \"http://www.w3.org/2000/svg\" };\nbus.publish('ready');\n"
+   }
+  },
+  {
+   "id": "dsk003-pos-set-feed-http",
+   "rule": "SEC-DSK-003",
+   "kind": "positive",
+   "note": "plain HTTP feed via setFeedURL",
+   "files": {
+    "main.js": "const { autoUpdater } = require('electron');\nautoUpdater.setFeedURL({ url: 'http://updates.example.com/app' });\n"
+   },
+   "expect": [
+    [
+     "main.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk003-pos-yaml-verify-off",
+   "rule": "SEC-DSK-003",
+   "kind": "positive",
+   "note": "builder config disables signature verification, and http publish url",
+   "files": {
+    "electron-builder.yml": "win:\n  verifyUpdateCodeSignature: false\npublish:\n  provider: generic\n  url: http://cdn.example.com/updates\n"
+   },
+   "expect": [
+    [
+     "electron-builder.yml",
+     2
+    ],
+    [
+     "electron-builder.yml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk003-pos-package-json-publish-http",
+   "rule": "SEC-DSK-003",
+   "kind": "positive",
+   "note": "package.json build.publish with http url",
+   "files": {
+    "package.json": "{\n  \"name\": \"x\",\n  \"repository\": { \"url\": \"https://github.com/example/x\" },\n  \"build\": {\n    \"publish\": [\n      {\n        \"provider\": \"generic\",\n        \"url\": \"http://updates.example.com/\"\n      }\n    ]\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "dsk003-pos-ts-skip-sig",
+   "rule": "SEC-DSK-003",
+   "kind": "positive",
+   "note": "TS skipSignatureVerification",
+   "files": {
+    "updater.ts": "import { autoUpdater } from 'electron-updater';\nconst opts = { skipSignatureVerification: true };\n"
+   },
+   "expect": [
+    [
+     "updater.ts",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk004-neg-placeholders",
+   "rule": "SEC-DSK-004",
+   "kind": "negative",
+   "note": "placeholders / token substitution / key-vault refs",
+   "files": {
+    "appsettings.json": "{\n  \"ConnectionStrings\": {\n    \"A\": \"Server=db;Database=x;User Id=app;Password={DB_PASSWORD};\",\n    \"B\": \"Server=db;Database=x;User Id=app;Password=${DB_PASSWORD};\",\n    \"C\": \"Server=db;Database=x;User Id=app;Password=#{DbPassword}#;\",\n    \"D\": \"Server=db;Database=x;User Id=app;Password=@Microsoft.KeyVault(SecretUri=https://v/secrets/p);\",\n    \"E\": \"Server=db;Database=x;User Id=app;Password=__DB_PASSWORD__;\",\n    \"F\": \"Server=db;Database=x;Integrated Security=true;\"\n  },\n  \"Password\": \"\"\n}\n"
+   }
+  },
+  {
+   "id": "dsk004-neg-comments",
+   "rule": "SEC-DSK-004",
+   "kind": "negative",
+   "note": "xml/ini comments",
+   "files": {
+    "web.config": "<configuration>\n  <!-- <add connectionString=\"Server=a;User Id=b;Password=hunter2\"/> -->\n  <connectionStrings>\n    <add name=\"x\" connectionString=\"Server=a;Database=b;Integrated Security=SSPI\"/>\n  </connectionStrings>\n</configuration>\n",
+    "app.ini": "; Server=a;User Id=b;Password=hunter2\n# postgres://user:pass@host/db\n[db]\npassword_file = /run/secrets/db\n"
+   }
+  },
+  {
+   "id": "dsk004-neg-url-no-password",
+   "rule": "SEC-DSK-004",
+   "kind": "negative",
+   "note": "URLs without password / placeholder password",
+   "files": {
+    "app.ini": "url = https://user@example.com/path\nmirror = postgres://app:${DB_PASS}@db:5432/x\nhome = https://example.com:8443/a\n"
+   }
+  },
+  {
+   "id": "dsk004-neg-identity-options",
+   "rule": "SEC-DSK-004",
+   "kind": "negative",
+   "note": "ASP.NET Identity password policy and non-credential Password words",
+   "files": {
+    "appsettings.json": "{\n  \"Identity\": { \"Password\": { \"RequiredLength\": 12, \"RequireDigit\": true } },\n  \"Ui\": { \"PasswordLabel\": \"\" , \"ForgotPasswordUrl\": \"/account/forgot\" }\n}\n"
+   }
+  },
+  {
+   "id": "dsk004-neg-encrypted-token",
+   "rule": "SEC-DSK-004",
+   "kind": "negative",
+   "note": "encrypted-at-rest value markers",
+   "files": {
+    "app.config": "<configuration><appSettings>\n <add key=\"db\" value=\"Server=a;Database=b;User Id=c;Password=ENC(AbCdEf==);\"/>\n</appSettings></configuration>\n"
+   }
+  },
+  {
+   "id": "dsk004-pos-appsettings",
+   "rule": "SEC-DSK-004",
+   "kind": "positive",
+   "note": "classic connection string",
+   "files": {
+    "appsettings.json": "{\n  \"ConnectionStrings\": {\n    \"Default\": \"Server=tcp:db.example.com;Database=prod;User Id=app;Password=Sup3rS3cret!;\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "appsettings.json",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dsk004-pos-web-config-pwd",
+   "rule": "SEC-DSK-004",
+   "kind": "positive",
+   "note": "web.config Pwd= variant",
+   "files": {
+    "web.config": "<configuration>\n  <connectionStrings>\n    <add name=\"x\" connectionString=\"Data Source=srv;Initial Catalog=db;Uid=sa;Pwd=hunter2;\" />\n  </connectionStrings>\n</configuration>\n"
+   },
+   "expect": [
+    [
+     "web.config",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dsk004-pos-ini-url",
+   "rule": "SEC-DSK-004",
+   "kind": "positive",
+   "note": "URL credentials in ini",
+   "files": {
+    "settings.ini": "[db]\nurl = postgres://app:hunter2@db.internal:5432/prod\n"
+   },
+   "expect": [
+    [
+     "settings.ini",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk004-pos-json-password-key",
+   "rule": "SEC-DSK-004",
+   "kind": "positive",
+   "note": "structured JSON credential key",
+   "files": {
+    "appsettings.Production.json": "{\n  \"Database\": {\n    \"Host\": \"db.example.com\",\n    \"User\": \"app\",\n    \"Password\": \"hunter2\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "appsettings.Production.json",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk005-neg-java-filtered",
+   "rule": "SEC-DSK-005",
+   "kind": "negative",
+   "note": "ObjectInputStream with a JEP-290 filter",
+   "files": {
+    "A.java": "class A { Object f(InputStream in) throws Exception {\n  ObjectInputStream ois = new ObjectInputStream(in);\n  ois.setObjectInputFilter(ObjectInputFilter.Config.createFilter(\"com.x.*;!*\"));\n  return ois.readObject();\n} }"
+   }
+  },
+  {
+   "id": "dsk005-neg-java-resolveclass",
+   "rule": "SEC-DSK-005",
+   "kind": "negative",
+   "note": "allow-listing subclass via resolveClass",
+   "files": {
+    "A.java": "class A { Object f(InputStream in) throws Exception {\n  return new ObjectInputStream(in) {\n    @Override protected Class<?> resolveClass(ObjectStreamClass d) throws IOException, ClassNotFoundException {\n      if (!d.getName().startsWith(\"com.x.\")) throw new InvalidClassException(d.getName());\n      return super.resolveClass(d);\n    }\n  }.readObject();\n} }"
+   }
+  },
+  {
+   "id": "dsk005-neg-dotnet-comment-string",
+   "rule": "SEC-DSK-005",
+   "kind": "negative",
+   "note": "banned-API names in comment / string",
+   "files": {
+    "A.cs": "class A {\n  // BinaryFormatter is banned (CA2300)\n  const string Msg = \"BinaryFormatter is obsolete\";\n  var o = System.Text.Json.JsonSerializer.Deserialize<Foo>(s);\n}"
+   }
+  },
+  {
+   "id": "dsk005-neg-dotnet-serialize-only",
+   "rule": "SEC-DSK-005",
+   "kind": "negative",
+   "note": "BinaryFormatter only used to write, never to deserialize",
+   "files": {
+    "A.cs": "class A { void Save(Stream s){ var f = new BinaryFormatter(); f.Serialize(s, data); } }"
+   }
+  },
+  {
+   "id": "dsk005-neg-python-no-gui",
+   "rule": "SEC-DSK-005",
+   "kind": "negative",
+   "note": "pickle in a non-GUI python script; pickle.dumps in GUI app",
+   "files": {
+    "worker.py": "import pickle\ndata = pickle.loads(blob)\n",
+    "gui.py": "import tkinter as tk\nimport pickle\nblob = pickle.dumps(state)\n# pickle.loads(old) removed\n"
+   }
+  },
+  {
+   "id": "dsk005-pos-dotnet",
+   "rule": "SEC-DSK-005",
+   "kind": "positive",
+   "note": ".NET BinaryFormatter deserialize",
+   "files": {
+    "A.cs": "class A { object Load(Stream s){\n  var f = new BinaryFormatter();\n  return f.Deserialize(s);\n} }"
+   },
+   "expect": [
+    [
+     "A.cs",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk005-pos-java-kotlin",
+   "rule": "SEC-DSK-005",
+   "kind": "positive",
+   "note": "Java and Kotlin (no new keyword)",
+   "files": {
+    "A.java": "class A {\n  Object f(InputStream in) throws Exception {\n    return new ObjectInputStream(in).readObject();\n  }\n}",
+    "B.kt": "class B {\n    fun f(i: InputStream) = ObjectInputStream(i).readObject()\n}"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ],
+    [
+     "B.kt",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "dsk005-pos-python-gui",
+   "rule": "SEC-DSK-005",
+   "kind": "positive",
+   "note": "pickle.load in a Qt app",
+   "files": {
+    "app.py": "from PyQt5.QtWidgets import QApplication\nimport pickle\ndef load(path):\n    with open(path, \"rb\") as fh:\n        return pickle.load(fh)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk005-pos-python-comments-and-blank-lines-before",
+   "rule": "SEC-DSK-005",
+   "kind": "positive",
+   "note": "line numbers must stay exact after comment lines and blank runs (strip_hash regression)",
+   "files": {
+    "app.py": "# header comment\n\n\nimport tkinter\nimport pickle\n\n# explain\n   # indented comment\n\ndef load(p):\n    # note\n\n    return pickle.loads(p)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     13
+    ]
+   ]
+  },
+  {
+   "id": "dsk003-neg-yaml-comments-blank",
+   "rule": "SEC-DSK-003",
+   "kind": "negative",
+   "note": "commented-out insecure feed with blank lines; secure feed after",
+   "files": {
+    "app-update.yml": "# url: http://old.example.com\n\nprovider: generic\n\n# verifyUpdateCodeSignature: false\nurl: https://updates.example.com\n"
+   }
+  },
+  {
+   "id": "dsk003-pos-yaml-line-after-comments",
+   "rule": "SEC-DSK-003",
+   "kind": "positive",
+   "note": "exact line after comment+blank lines in builder yml",
+   "files": {
+    "electron-builder.yml": "# comment\n\n# another\n\n\npublish:\n  provider: generic\n  # note\n  url: http://cdn.example.com/u\n"
+   },
+   "expect": [
+    [
+     "electron-builder.yml",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "and003-neg-flavor-overlay-and-library-components",
+   "rule": "SEC-AND-003",
+   "kind": "negative",
+   "note": "flavor overlay and library manifests with an attr-less <application> holding components/meta-data (field-derived)",
+   "files": {
+    "app/src/prod/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <meta-data android:name=\"analytics_off\" android:value=\"false\" tools:replace=\"android:value\"/>\n    </application>\n</manifest>",
+    "feature/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".Licenses\" android:theme=\"@style/T\"/>\n    </application>\n</manifest>",
+    "core/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application android:theme=\"@style/T\"/>\n</manifest>"
+   }
+  },
+  {
+   "id": "and003-pos-launcher-bare-application",
+   "rule": "SEC-AND-003",
+   "kind": "positive",
+   "note": "app manifest identified by its launcher activity even with a bare <application>",
+   "files": {
+    "app/src/main/AndroidManifest.xml": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\"\n    package=\"com.example.app\">\n    <application>\n        <activity android:name=\".Main\" android:exported=\"true\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>"
+   },
+   "expect": [
+    [
+     "app/src/main/AndroidManifest.xml",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "dsk002-neg-named-url-regex-guard",
+   "rule": "SEC-DSK-002",
+   "kind": "negative",
+   "note": "guard through a named URL regex constant (field-derived, MarkText)",
+   "files": {
+    "file.js": "const { shell } = require('electron')\nconst URL_REG = /^https?:\\/\\//\nfunction open(u) {\n  if (URL_REG.test(u)) {\n    shell.openExternal(u)\n  }\n}\n"
+   }
+  },
+  {
+   "id": "and006-neg-import-of-world-readable",
+   "rule": "SEC-AND-006",
+   "kind": "negative",
+   "note": "static import of the constant is not a use (field-derived)",
+   "files": {
+    "A.java": "import static android.content.Context.MODE_WORLD_READABLE;\nclass A {}\n"
+   }
+  },
+  {
+   "id": "and006-pos-line-exact-after-imports",
+   "rule": "SEC-AND-006",
+   "kind": "positive",
+   "note": "import stripping must not shift later line numbers",
+   "files": {
+    "A.java": "package a;\n\nimport android.content.Context;\nimport static android.content.Context.MODE_WORLD_READABLE;\n\nclass A {\n  void f(Context c) throws Exception {\n    c.openFileOutput(\"x\", MODE_WORLD_READABLE);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "k8s001-neg-hardened",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "all hardening flags false / absent",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      privileged: false\n      allowPrivilegeEscalation: false\n  hostNetwork: false\n"
+   }
+  },
+  {
+   "id": "k8s001-neg-configmap-text",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "ConfigMap and block scalars merely contain the words",
+   "files": {
+    "cm.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: docs\ndata:\n  policy.yaml: |\n    privileged: true\n    hostNetwork: true\n---\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: d\nspec:\n  template:\n    spec:\n      containers:\n      - name: c\n        image: busybox:1.36\n        command: [\"sh\", \"-c\"]\n        args:\n        - |\n          echo \"hostPID: true is forbidden\"\n          privileged: true\n"
+   }
+  },
+  {
+   "id": "k8s001-neg-helm-template",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "templated Helm line and values.yaml defaults (not manifests)",
+   "files": {
+    "templates/d.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {{ .Release.Name }}\nspec:\n  template:\n    spec:\n      {{- if .Values.hostNetwork }}\n      hostNetwork: true\n      {{- end }}\n      containers:\n      - name: c\n        image: \"{{ .Values.image }}\"\n",
+    "values.yaml": "privileged: true\nhostNetwork: true\n"
+   }
+  },
+  {
+   "id": "k8s001-neg-comment-and-trailing",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "commented out and false with trailing comment",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      # privileged: true\n      privileged: false  # was true\n      allowPrivilegeEscalation: false # hostNetwork: true\n"
+   }
+  },
+  {
+   "id": "k8s001-neg-policy-kind",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "PodSecurityPolicy / policy objects that *forbid* the settings",
+   "files": {
+    "psp.yaml": "apiVersion: policy/v1beta1\nkind: PodSecurityPolicy\nmetadata:\n  name: restricted\nspec:\n  privileged: false\n  allowPrivilegeEscalation: false\n  hostNetwork: false\n  volumes:\n  - configMap\n  - secret\n"
+   }
+  },
+  {
+   "id": "k8s001-pos-block",
+   "rule": "SEC-K8S-001",
+   "kind": "positive",
+   "note": "block style privileged + escalation",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      privileged: true\n      allowPrivilegeEscalation: true\n"
+   },
+   "expect": [
+    [
+     "pod.yaml",
+     10
+    ],
+    [
+     "pod.yaml",
+     11
+    ]
+   ]
+  },
+  {
+   "id": "k8s001-pos-flow-style",
+   "rule": "SEC-K8S-001",
+   "kind": "positive",
+   "note": "flow-style securityContext",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext: {privileged: true, runAsNonRoot: true}\n"
+   },
+   "expect": [
+    [
+     "pod.yaml",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "k8s001-pos-multidoc-hostpath",
+   "rule": "SEC-K8S-001",
+   "kind": "positive",
+   "note": "second doc of a multi-doc file; hostPath + hostPID + quoted true",
+   "files": {
+    "all.yaml": "apiVersion: v1\nkind: Service\nmetadata:\n  name: s\n---\napiVersion: apps/v1\nkind: DaemonSet\nmetadata:\n  name: agent\nspec:\n  template:\n    spec:\n      hostPID: \"true\"\n      containers:\n      - name: a\n        image: agent:2\n        volumeMounts:\n        - name: root\n          mountPath: /host\n      volumes:\n      - name: root\n        hostPath:\n          path: /\n"
+   },
+   "expect": [
+    [
+     "all.yaml",
+     13
+    ],
+    [
+     "all.yaml",
+     22
+    ]
+   ]
+  },
+  {
+   "id": "k8s002-neg-nonroot",
+   "rule": "SEC-K8S-002",
+   "kind": "negative",
+   "note": "non-root uid / runAsNonRoot true",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      runAsUser: 10001\n      runAsNonRoot: true\n      runAsGroup: 0\n"
+   }
+  },
+  {
+   "id": "k8s002-neg-uid-prefix",
+   "rule": "SEC-K8S-002",
+   "kind": "negative",
+   "note": "uids that merely contain/start with 0 or 1",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      runAsUser: 100\n      fsGroup: 0\n"
+   }
+  },
+  {
+   "id": "k8s002-neg-configmap-block",
+   "rule": "SEC-K8S-002",
+   "kind": "negative",
+   "note": "words in ConfigMap / commented",
+   "files": {
+    "x.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: c\ndata:\n  note: |\n    runAsUser: 0\n    runAsNonRoot: false\n---\napiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  securityContext:\n    # runAsUser: 0\n    runAsNonRoot: true\n  containers: []\n"
+   }
+  },
+  {
+   "id": "k8s002-neg-helm-template",
+   "rule": "SEC-K8S-002",
+   "kind": "negative",
+   "note": "templated value",
+   "files": {
+    "templates/p.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  securityContext:\n    runAsUser: {{ .Values.uid | default 10001 }}\n    runAsNonRoot: {{ .Values.nonRoot }}\n"
+   }
+  },
+  {
+   "id": "k8s002-pos-block",
+   "rule": "SEC-K8S-002",
+   "kind": "positive",
+   "note": "runAsUser 0 and runAsNonRoot false",
+   "files": {
+    "pod.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n  containers:\n  - name: c\n    image: nginx:1.25\n    securityContext:\n      runAsUser: 0\n      runAsNonRoot: false\n"
+   },
+   "expect": [
+    [
+     "pod.yaml",
+     10
+    ],
+    [
+     "pod.yaml",
+     11
+    ]
+   ]
+  },
+  {
+   "id": "k8s002-pos-quoted-trailing-comment",
+   "rule": "SEC-K8S-002",
+   "kind": "positive",
+   "note": "quoted '0' with trailing comment, list-dash form",
+   "files": {
+    "d.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: d\nspec:\n  template:\n    spec:\n      securityContext:\n        runAsUser: \"0\"  # root for chown\n      initContainers:\n      - runAsNonRoot: false\n"
+   },
+   "expect": [
+    [
+     "d.yaml",
+     9
+    ],
+    [
+     "d.yaml",
+     11
+    ]
+   ]
+  },
+  {
+   "id": "k8s002-pos-flow",
+   "rule": "SEC-K8S-002",
+   "kind": "positive",
+   "note": "flow-style securityContext",
+   "files": {
+    "cj.yaml": "apiVersion: batch/v1\nkind: CronJob\nmetadata:\n  name: j\nspec:\n  schedule: \"* * * * *\"\n  jobTemplate:\n    spec:\n      template:\n        spec:\n          containers:\n          - name: c\n            image: x:1\n            securityContext: {runAsUser: 0, allowPrivilegeEscalation: false}\n"
+   },
+   "expect": [
+    [
+     "cj.yaml",
+     14
+    ]
+   ]
+  },
+  {
+   "id": "k8s003-neg-digest-user",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "digest-pinned base with non-root USER",
+   "files": {
+    "Dockerfile": "FROM node:20.11-alpine@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nWORKDIR /app\nCOPY . .\nUSER 10001:10001\nCMD [\"node\", \"server.js\"]\n"
+   }
+  },
+  {
+   "id": "k8s003-neg-multistage-final-user",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "builder stage runs as root, final stage has USER; stage-name base; scratch",
+   "files": {
+    "Dockerfile": "FROM golang:1.22 AS Build\nRUN go build -o /app .\nFROM scratch AS base\nCOPY --from=Build /app /app\nFROM base\nUSER 65532\nENTRYPOINT [\"/app\"]\n"
+   }
+  },
+  {
+   "id": "k8s003-neg-nonroot-distroless",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "distroless :nonroot image is non-root without USER",
+   "files": {
+    "Dockerfile": "FROM golang:1.22 AS b\nRUN go build -o /app .\nFROM gcr.io/distroless/static:nonroot\nCOPY --from=b /app /app\nENTRYPOINT [\"/app\"]\n"
+   }
+  },
+  {
+   "id": "k8s003-neg-arg-from-and-comments",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "ARG-based FROM, comments with curl|sh, download-then-verify",
+   "files": {
+    "Dockerfile.prod": "ARG BASE=debian:12-slim\nFROM ${BASE}\n# curl -fsSL https://x.sh | sh   (do NOT do this)\nRUN curl -fsSLo /tmp/i.sh https://example.com/i.sh \\\n && echo \"abc  /tmp/i.sh\" | sha256sum -c - \\\n && sh /tmp/i.sh\nRUN curl -fsSL https://example.com/a.tgz | tar -xz -C /opt\nUSER nobody\n"
+   }
+  },
+  {
+   "id": "k8s003-neg-user-then-root-then-user",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "USER switched back to non-root at the end",
+   "files": {
+    "Dockerfile": "FROM python:3.12-slim\nUSER root\nRUN pip install -r r.txt\nUSER app\n"
+   }
+  },
+  {
+   "id": "k8s003-pos-latest-no-user",
+   "rule": "SEC-K8S-003",
+   "kind": "positive",
+   "note": ":latest tag and missing USER (reports FROM line twice => same line once)",
+   "files": {
+    "Dockerfile": "FROM ubuntu:latest\nRUN apt-get update\nCMD [\"bash\"]\n"
+   },
+   "expect": [
+    [
+     "Dockerfile",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "k8s003-pos-untagged-curl-sh",
+   "rule": "SEC-K8S-003",
+   "kind": "positive",
+   "note": "untagged base, curl|bash and wget|sh, lowercase instructions",
+   "files": {
+    "Dockerfile": "from alpine\nrun apk add curl\nrun curl -sSL https://get.example.com | bash\nRUN wget -qO- https://example.com/x.sh | sh\nuser app\n"
+   },
+   "expect": [
+    [
+     "Dockerfile",
+     1
+    ],
+    [
+     "Dockerfile",
+     3
+    ],
+    [
+     "Dockerfile",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "k8s003-pos-final-stage-root",
+   "rule": "SEC-K8S-003",
+   "kind": "positive",
+   "note": "non-root builder but final stage root; unpinned final base",
+   "files": {
+    "svc.Dockerfile": "FROM node:20 AS build\nUSER node\nRUN npm ci\nFROM nginx\nCOPY --from=build /app /usr/share/nginx/html\n"
+   },
+   "expect": [
+    [
+     "svc.Dockerfile",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "k8s004-neg-private-sg",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "admin port open only to private CIDRs; public only on 443/80; egress all",
+   "files": {
+    "sg.tf": "resource \"aws_security_group\" \"a\" {\n  ingress {\n    from_port   = 22\n    to_port     = 22\n    protocol    = \"tcp\"\n    cidr_blocks = [\"10.0.0.0/8\"]\n  }\n  ingress {\n    from_port   = 443\n    to_port     = 443\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n  egress {\n    from_port   = 0\n    to_port     = 0\n    protocol    = \"-1\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-sg-rule-egress-var",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "type=egress rule; ingress with variable CIDR; description mentions the CIDR",
+   "files": {
+    "sg.tf": "resource \"aws_security_group_rule\" \"out\" {\n  type              = \"egress\"\n  from_port         = 22\n  to_port           = 22\n  protocol          = \"tcp\"\n  cidr_blocks       = [\"0.0.0.0/0\"]\n  security_group_id = aws_security_group.a.id\n}\nresource \"aws_security_group\" \"b\" {\n  ingress {\n    description = \"ssh, never 0.0.0.0/0 (cidr policy)\"\n    from_port   = 22\n    to_port     = 22\n    protocol    = \"tcp\"\n    cidr_blocks = [var.admin_cidr]\n  }\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-comments",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "everything bad is commented out",
+   "files": {
+    "main.tf": "# resource \"aws_s3_bucket\" \"x\" {}\n// acl = \"public-read\"\nresource \"aws_security_group\" \"c\" {\n  # cidr_blocks = [\"0.0.0.0/0\"]\n  ingress {\n    from_port   = 22\n    to_port     = 22\n    protocol    = \"tcp\"\n    # cidr_blocks = [\"0.0.0.0/0\"]\n    cidr_blocks = [\"192.168.0.0/16\"]\n  }\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-bucket-sse-same-block",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "bucket with SSE resource whose bucket ref follows the nested rule block + private acl",
+   "files": {
+    "s3.tf": "resource \"aws_s3_bucket\" \"data\" {\n  bucket = \"d\"\n}\nresource \"aws_s3_bucket_acl\" \"a\" {\n  bucket = aws_s3_bucket.data.id\n  acl    = \"private\"\n}\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"enc\" {\n  rule {\n    apply_server_side_encryption_by_default {\n      sse_algorithm = \"aws:kms\"\n    }\n  }\n  bucket = aws_s3_bucket.data.id\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-bucket-inline-sse",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "inline SSE configuration",
+   "files": {
+    "s3.tf": "resource \"aws_s3_bucket\" \"inl\" {\n  bucket = \"inl\"\n  server_side_encryption_configuration {\n    rule {\n      apply_server_side_encryption_by_default {\n        sse_algorithm = \"AES256\"\n      }\n    }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-ssm-text",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "similar words in strings and non-s3 resources",
+   "files": {
+    "x.tf": "resource \"aws_s3_bucket_policy\" \"p\" {\n  bucket = \"b\"\n  policy = \"{\\\"Effect\\\":\\\"Deny\\\"}\"\n}\nvariable \"ssh_cidr\" {\n  default = \"0.0.0.0/0\"\n}\n"
+   }
+  },
+  {
+   "id": "k8s004-pos-inline-ssh",
+   "rule": "SEC-K8S-004",
+   "kind": "positive",
+   "note": "inline ingress block open to world on ssh",
+   "files": {
+    "sg.tf": "resource \"aws_security_group\" \"a\" {\n  name = \"a\"\n  ingress {\n    from_port   = 22\n    to_port     = 22\n    protocol    = \"tcp\"\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "sg.tf",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "k8s004-pos-multiline-list-ipv6-and-all",
+   "rule": "SEC-K8S-004",
+   "kind": "positive",
+   "note": "multi-line cidr list, ipv6, protocol -1",
+   "files": {
+    "sg.tf": "resource \"aws_security_group\" \"a\" {\n  ingress {\n    from_port   = 3389\n    to_port     = 3389\n    protocol    = \"tcp\"\n    cidr_blocks = [\n      \"10.0.0.0/8\",\n      \"0.0.0.0/0\",\n    ]\n  }\n  ingress {\n    from_port        = 0\n    to_port          = 0\n    protocol         = \"-1\"\n    ipv6_cidr_blocks = [\"::/0\"]\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "sg.tf",
+     8
+    ],
+    [
+     "sg.tf",
+     15
+    ]
+   ]
+  },
+  {
+   "id": "k8s004-pos-rule-resource-and-acl",
+   "rule": "SEC-K8S-004",
+   "kind": "positive",
+   "note": "aws_security_group_rule ingress on db port, ingress-rule resource, public-read acl, unencrypted bucket",
+   "files": {
+    "main.tf": "resource \"aws_security_group_rule\" \"db\" {\n  type        = \"ingress\"\n  from_port   = 5432\n  to_port     = 5432\n  protocol    = \"tcp\"\n  cidr_blocks = [\"0.0.0.0/0\"]\n}\nresource \"aws_vpc_security_group_ingress_rule\" \"ssh\" {\n  from_port   = 22\n  to_port     = 22\n  ip_protocol = \"tcp\"\n  cidr_ipv4   = \"0.0.0.0/0\"\n}\nresource \"aws_s3_bucket\" \"logs\" {\n  bucket = \"logs\"\n  acl    = \"public-read\"\n}\n"
+   },
+   "expect": [
+    [
+     "main.tf",
+     6
+    ],
+    [
+     "main.tf",
+     12
+    ],
+    [
+     "main.tf",
+     14
+    ],
+    [
+     "main.tf",
+     16
+    ]
+   ]
+  },
+  {
+   "id": "k8s005-neg-no-data",
+   "rule": "SEC-K8S-005",
+   "kind": "negative",
+   "note": "Secret with only type/metadata; empty data map",
+   "files": {
+    "s.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: x\ntype: kubernetes.io/service-account-token\ndata: {}\nstringData:\n  empty: \"\"\n"
+   }
+  },
+  {
+   "id": "k8s005-neg-templated",
+   "rule": "SEC-K8S-005",
+   "kind": "negative",
+   "note": "Helm templated Secret",
+   "files": {
+    "templates/s.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: {{ .Release.Name }}\ntype: Opaque\ndata:\n  {{- range $k, $v := .Values.secrets }}\n  {{ $k }}: {{ $v | b64enc | quote }}\n  {{- end }}\n  password: {{ .Values.password | b64enc }}\nstringData:\n  token: ${TOKEN}\n"
+   }
+  },
+  {
+   "id": "k8s005-neg-sealed-external",
+   "rule": "SEC-K8S-005",
+   "kind": "negative",
+   "note": "SealedSecret / ExternalSecret / SOPS-encrypted Secret",
+   "files": {
+    "sealed.yaml": "apiVersion: bitnami.com/v1alpha1\nkind: SealedSecret\nmetadata:\n  name: x\nspec:\n  encryptedData:\n    password: AgEXAMPLEEXAMPLEEXAMPLE+EXAMPLE00\n---\napiVersion: external-secrets.io/v1beta1\nkind: ExternalSecret\nmetadata:\n  name: y\nspec:\n  data:\n  - secretKey: password\n    remoteRef:\n      key: prod/db\n",
+    "enc.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: z\nstringData:\n  password: ENC[AES256_GCM,data:abc,iv:def,tag:ghi,type:str]\nsops:\n  version: 3.8.1\n"
+   }
+  },
+  {
+   "id": "k8s005-neg-configmap-and-comment",
+   "rule": "SEC-K8S-005",
+   "kind": "negative",
+   "note": "ConfigMap data; '# kind: Secret' comment; non-secret kinds with data",
+   "files": {
+    "cm.yaml": "# kind: Secret\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: c\ndata:\n  level: debug\n"
+   }
+  },
+  {
+   "id": "k8s005-neg-secret-ref-only",
+   "rule": "SEC-K8S-005",
+   "kind": "negative",
+   "note": "Deployment that references a Secret by name",
+   "files": {
+    "d.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: d\nspec:\n  template:\n    spec:\n      containers:\n      - name: c\n        image: x:1\n        env:\n        - name: P\n          valueFrom:\n            secretKeyRef:\n              name: db\n              key: password\n"
+   }
+  },
+  {
+   "id": "k8s005-pos-stringdata",
+   "rule": "SEC-K8S-005",
+   "kind": "positive",
+   "note": "stringData plaintext",
+   "files": {
+    "s.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: db\ntype: Opaque\nstringData:\n  password: hunter2\n"
+   },
+   "expect": [
+    [
+     "s.yaml",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "k8s005-pos-multidoc-data-comment-sep",
+   "rule": "SEC-K8S-005",
+   "kind": "positive",
+   "note": "second doc after a '--- # comment' separator, base64 data",
+   "files": {
+    "all.yaml": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: d\n--- # the secret\napiVersion: v1\nkind: Secret\nmetadata:\n  name: db\ndata:\n  password: aHVudGVyMg==\n"
+   },
+   "expect": [
+    [
+     "all.yaml",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "k8s005-pos-flow-data",
+   "rule": "SEC-K8S-005",
+   "kind": "positive",
+   "note": "flow-style data map and quoted kind",
+   "files": {
+    "s.yaml": "apiVersion: v1\nkind: \"Secret\"\nmetadata: {name: db}\ndata: {password: aHVudGVyMg==}\n"
+   },
+   "expect": [
+    [
+     "s.yaml",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "k8s006-neg-narrow-role",
+   "rule": "SEC-K8S-006",
+   "kind": "negative",
+   "note": "specific resources and verbs; wildcard only in apiGroups",
+   "files": {
+    "r.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: reader\nrules:\n- apiGroups: [\"*\"]\n  resources: [\"pods\", \"pods/log\"]\n  verbs: [\"get\", \"list\", \"watch\"]\n- apiGroups: [\"\"]\n  resources:\n  - configmaps\n  resourceNames: [\"*\"]\n  verbs:\n  - get\n"
+   }
+  },
+  {
+   "id": "k8s006-neg-non-cluster-admin-binding",
+   "rule": "SEC-K8S-006",
+   "kind": "negative",
+   "note": "bindings to view/edit/admin and cluster-admin-ish names",
+   "files": {
+    "b.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: cluster-admin-readonly\nsubjects:\n- kind: User\n  name: cluster-admin\n  apiGroup: rbac.authorization.k8s.io\nroleRef:\n  kind: ClusterRole\n  name: view\n  apiGroup: rbac.authorization.k8s.io\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: x\nroleRef:\n  kind: ClusterRole\n  name: admin\n  apiGroup: rbac.authorization.k8s.io\nsubjects: []\n"
+   }
+  },
+  {
+   "id": "k8s006-neg-comments",
+   "rule": "SEC-K8S-006",
+   "kind": "negative",
+   "note": "wildcards only in comments",
+   "files": {
+    "r.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: x\nrules:\n# - verbs: [\"*\"]\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  # resources: [\"*\"]\n  verbs: [\"get\"]\n"
+   }
+  },
+  {
+   "id": "k8s006-neg-nonresource-urls-and-configmap",
+   "rule": "SEC-K8S-006",
+   "kind": "negative",
+   "note": "nonResourceURLs list, and wildcard text in a ConfigMap",
+   "files": {
+    "r.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: metrics\nrules:\n- nonResourceURLs:\n  - \"*\"\n  verbs: [\"get\"]\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: c\ndata:\n  policy: |\n    verbs:\n    - \"*\"\n"
+   }
+  },
+  {
+   "id": "k8s006-neg-helm-template",
+   "rule": "SEC-K8S-006",
+   "kind": "negative",
+   "note": "templated verbs",
+   "files": {
+    "templates/r.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: {{ .Release.Name }}\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: {{ toJson .Values.verbs }}\n"
+   }
+  },
+  {
+   "id": "k8s006-pos-block-wildcards",
+   "rule": "SEC-K8S-006",
+   "kind": "positive",
+   "note": "block-list wildcard verbs and resources",
+   "files": {
+    "r.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: god\nrules:\n- apiGroups: [\"\"]\n  resources:\n  - \"*\"\n  verbs:\n  - '*'\n"
+   },
+   "expect": [
+    [
+     "r.yaml",
+     8
+    ],
+    [
+     "r.yaml",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "k8s006-pos-flow-wildcards-multidoc",
+   "rule": "SEC-K8S-006",
+   "kind": "positive",
+   "note": "flow style wildcard in second doc of Role",
+   "files": {
+    "r.yaml": "apiVersion: v1\nkind: ServiceAccount\nmetadata:\n  name: sa\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: r\nrules:\n- apiGroups: [\"\"]\n  resources: [\"*\"]\n  verbs: ['get']\n"
+   },
+   "expect": [
+    [
+     "r.yaml",
+     12
+    ]
+   ]
+  },
+  {
+   "id": "k8s006-pos-cluster-admin",
+   "rule": "SEC-K8S-006",
+   "kind": "positive",
+   "note": "block and flow roleRef to cluster-admin; subjects before roleRef",
+   "files": {
+    "b.yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: a\nsubjects:\n- kind: ServiceAccount\n  name: ci\n  namespace: default\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: cluster-admin\n---\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: b\nroleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cluster-admin}\nsubjects:\n- kind: User\n  name: bob\n"
+   },
+   "expect": [
+    [
+     "b.yaml",
+     12
+    ],
+    [
+     "b.yaml",
+     18
+    ]
+   ]
+  },
+  {
+   "id": "k8s001-neg-crd-schema-and-kind-config",
+   "rule": "SEC-K8S-001",
+   "kind": "negative",
+   "note": "CRD openAPI schema keys named hostPath and a kind cluster config (field-derived)",
+   "files": {
+    "crd.yaml": "apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: prometheuses.monitoring.coreos.com\nspec:\n  versions:\n  - schema:\n      openAPIV3Schema:\n        properties:\n          volumes:\n            items:\n              properties:\n                hostPath:\n                  type: object\n                privileged:\n                  type: boolean\n",
+    "kind-config.yml": "kind: Cluster\napiVersion: kind.x-k8s.io/v1alpha4\nnodes:\n- role: control-plane\n  extraMounts:\n  - hostPath: /tmp/ci/patches\n    containerPath: /patches\n"
+   }
+  },
+  {
+   "id": "k8s003-neg-test-fixture-dockerfile",
+   "rule": "SEC-K8S-003",
+   "kind": "negative",
+   "note": "test fixture Dockerfile under tests/ (field-derived)",
+   "files": {
+    "docker/tests/plugins/Dockerfile": "FROM bats-base\nRUN echo hi\n"
+   }
+  },
+  {
+   "id": "k8s004-neg-sse-via-ternary-ref",
+   "rule": "SEC-K8S-004",
+   "kind": "negative",
+   "note": "SSE resource references the bucket inside a conditional expression (field-derived)",
+   "files": {
+    "main.tf": "resource \"aws_s3_bucket\" \"this\" {\n  bucket = \"x\"\n}\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"this\" {\n  count  = 1\n  bucket = var.is_dir ? aws_s3_directory_bucket.this[0].bucket : aws_s3_bucket.this[0].id\n  rule {\n    apply_server_side_encryption_by_default {\n      sse_algorithm = \"AES256\"\n    }\n  }\n}\n"
+   }
+  }
+ ]
+}
