@@ -1,10 +1,10 @@
 ---
 name: security-coverage-analysis
 description: "Interprets a security run's coverage ledger: applicable vs executed vs blocked vs not-applicable counts, pass/fail/inconclusive outcomes, verified vs unverified findings, and the gaps that remain, always with denominators. Use when asked 'what was actually tested?', 'is it secure?', or to compare runs or decide what to unblock. Not for: choosing checks up front (security-test-strategy), producing the final report (security-reporting), or claiming a system is secure."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -67,7 +67,7 @@ Make coverage honest. Convert raw results into a ledger that shows what ran, wha
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

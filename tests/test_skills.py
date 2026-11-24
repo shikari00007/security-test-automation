@@ -37,7 +37,7 @@ def test_spec_and_frontmatter(d):
     assert validate_skill(d) == []
     fm, body = parse_frontmatter((d / "SKILL.md").read_text(encoding="utf-8"))
     assert fm["name"] == d.name
-    assert fm["license"] == "Apache-2.0"
+    assert fm["license"] == "MIT"
     assert fm.get("compatibility")
     assert fm["metadata"].get("version") and fm["metadata"].get("author")
     desc = fm["description"]
@@ -83,7 +83,7 @@ def test_live_host_mentions_are_scope_gated(d):
 def test_standalone_install_hint_and_fallback(d):
     body = (d / "SKILL.md").read_text(encoding="utf-8")
     assert "pip install git+https://github.com/shikari00007/security-test-automation" in body
-    assert "not yet published" in body
+    assert "pip install git+https://github.com/shikari00007/security-test-automation" in body
     assert "Without the CLI" in body
     for state in ("planned", "not_applicable", "blocked", "deferred", "executed", "needs_validation"):
         assert state in body

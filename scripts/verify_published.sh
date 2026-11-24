@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Run ONLY after the repository has been published with maintainer authorization.
-# Verifies the exact documented install command against the published GitHub repository.
+# Verifies the documented install command against the PUBLISHED GitHub repository (needs network + Node.js).
+# Usage: scripts/verify_published.sh [owner/repo]    (default: shikari00007/security-test-automation)
 set -euo pipefail
+repo="${1:-shikari00007/security-test-automation}"
 tmp="$(mktemp -d)"; export HOME="$tmp/home"; mkdir -p "$HOME" "$tmp/proj"; cd "$tmp/proj"
-npx -y skills add shikari00007/security-test-automation -a claude-code -a codex -a cursor -a gemini-cli -y --copy
-n=$(find . -name SKILL.md | wc -l)
-echo "SKILL.md files installed: $n (expected 16 per agent directory)"
-for d in .claude/skills .agents/skills; do
-  [ -d "$d" ] && echo "$d: $(ls "$d" | wc -l) skills"
-done
-python3 -m pip --version >/dev/null 2>&1 && true
-echo "Now run: security-skills skills validate .agents/skills   (after pip install of the runner)"
+npx -y skills add "$repo" -y
+n=$(find .agents/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+echo "skills installed into .agents/skills: $n"
+[ "$n" -eq 16 ] || { echo "FAIL: expected 16 skills" >&2; exit 1; }
+for d in .agents/skills/*; do test -f "$d/SKILL.md" || { echo "FAIL: $d has no SKILL.md" >&2; exit 1; }; done
+echo "OK: $repo installs 16 skills"

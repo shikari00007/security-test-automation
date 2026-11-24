@@ -25,7 +25,8 @@ INCLUDE = [
     "fixtures/**",
     "tests/*.py",
     "scripts/build_release.py", "scripts/release_gate.py", "scripts/scan_restricted.py", "scripts/rule_accuracy.py",
-    "scripts/verify_published.sh",
+    "scripts/verify_published.sh", "scripts/check_public_mit.py", "scripts/check_links.py",
+    ".github/ISSUE_TEMPLATE/*", ".github/PULL_REQUEST_TEMPLATE.md",
     "docs/VERIFICATION.md", "docs/RULE-ACCURACY.md", "docs/RULE-ACCURACY-FIELD*.md", "docs/RELEASE-GATES.md",
     "docs/THIRD-PARTY.md", "docs/PHASE0-AUDIT.md", "docs/CATALOG.md", "docs/methodology/*.md",
 ]

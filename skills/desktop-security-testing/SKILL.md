@@ -1,10 +1,10 @@
 ---
 name: desktop-security-testing
 description: "Reviews desktop and thick-client apps (Electron, WPF/WinForms/.NET, Qt, native) for insecure renderer settings, IPC and protocol handler abuse, local data and credential storage, update channel integrity, DLL search path and service permissions, and enterprise authentication handling (LDAP, Kerberos/SSPI, SSO tokens), offline first, VM tests only under written scope. Use when the project has Electron, .NET desktop, native binaries or an installer. Not for: web back ends (web/api skills), malware analysis, network attacks on third-party hosts, credential attacks, wireless or IoT."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -69,7 +69,7 @@ Evaluate client-side trust decisions, local attack surface and the update and in
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 
