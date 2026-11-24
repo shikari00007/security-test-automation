@@ -1,6 +1,8 @@
 """Release-content controls: allowlist, restricted-content scanner (with positive controls), licensing metadata."""
 import importlib.util
 import json
+
+import pytest
 import re
 import sys
 from pathlib import Path
@@ -54,7 +56,7 @@ def test_allowlist_excludes_restricted_material():
 
 
 def test_license_metadata():
-    import tomllib
+    tomllib = pytest.importorskip("tomllib")
     meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert meta["license"] == "Apache-2.0"
     lic = (ROOT / "LICENSE").read_text()

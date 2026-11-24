@@ -1,5 +1,5 @@
 f2ed99480e4cb99bc00769b5ff68b1b3b856dc5c901eb91e1697a18930859240       166  .github/secret_scanning.yml
-8d00eba315097903aade2bae313dd1bffe9e9d2c83649fe41c2653deb3e359ec      1273  .github/workflows/validate.yml
+206e43a09e65fe50ad2009e3dec5e6e6c9ea02977bff749fd7dcb7afcac0d90c      1444  .github/workflows/validate.yml
 b979ece35c03abbb37d5dab077f6ee045ec47a70e0fb30b09975d90a6db79f62       110  .gitignore
 360a6cca74aa35023b7f652154eb3d6134b98d2faeafc5b768009eb89d2a509c      2189  CHANGELOG.md
 98b68109f414b4bbd5d75f92a18c9073754bb77f6ccc44fd36a5c917033585ef       596  CONTRIBUTING.md
@@ -245,10 +245,10 @@ d87be3cbb3e4e4d61967cf78e42eda47bc4e94818a651ab4031cc83134e61afc       727  skil
 b4653f5e67392601c413e1bfb29d646a2bf3ff7d88363fbf164b90d5a96d3440      2310  skills/web-security-testing/references/safety-and-states.md
 9666334058f1a4cda2b5bbe6fc7c043fd239460f6bf08766e6e154f85e9513a6       963  skills/web-security-testing/references/standards.md
 0cb67ba91674c07e557440292720aa3c3c111f4c41b7db1f4d219a7c68dc6f52       144  tests/conftest.py
-eda839ffaed026d6688e0e0f506713c9ba71b2ad0e4071113bbff2e52ea0e4b7     19178  tests/test_core_engine.py
+465eec0dafbfa91cba7ae826e5cf06c286dd835c2812866da173efb6e40c1d29     19978  tests/test_core_engine.py
 510366463e820454b6cd7a0024fe460a92329a8da2de620757145b20f5aa4eb0      1731  tests/test_fixtures_e2e.py
 87646a4dfb6f148eb8762464e00630e72043528bf8f5e80fc0f12cb4d69fcd86      1179  tests/test_install_smoke.py
-1e29cfa6af4d378aa4fa7bcb0d14bc0bf0f9e93661fb2a0e7ee330927eed43b6      3087  tests/test_release.py
+c065c6d7c44c06d5c4d3205e43424d2432c622aa6685a30252c729b748e153b3      3128  tests/test_release.py
 1dcfe8d7a6468e11f9bbc78b5c3f603ae73ce1bdfe4111afbdf192857678f369      1968  tests/test_rule_accuracy.py
 817fc246ce3fdd4869f2d22bd3807ae1fdc6fba07db4cfc96bf24b068e2a12a3      6657  tests/test_rules_ai_llm.py
 ac90e30f505ff7f515be75eeeb776263491ed4016195165a43e2d7019ffc5b3f      7854  tests/test_rules_mobile_desktop_cloud_ai.py
