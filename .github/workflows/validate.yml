@@ -55,7 +55,8 @@ jobs:
           d = os.environ["RUNNER_TEMP"] + "/dist"
           whl = zipfile.ZipFile(glob.glob(d + "/*.whl")[0])
           meta = whl.read(next(n for n in whl.namelist() if n.endswith(".dist-info/METADATA"))).decode()
-          assert "License-Expression: MIT" in meta and "Apache" not in meta, meta[:300]
+          headers = meta.split("\n\n", 1)[0]   # the README (long description) may cite the historical release
+          assert "License-Expression: MIT" in headers and "Apache" not in headers, headers[:300]
           lic = next(n for n in whl.namelist() if n.endswith("/LICENSE"))
           assert whl.read(lic).decode().startswith("MIT License")
           sd = tarfile.open(glob.glob(d + "/*.tar.gz")[0])
