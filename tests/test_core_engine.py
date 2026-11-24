@@ -37,7 +37,7 @@ def write(p, rel, text):
 
 # ---- Phase 0 regressions ------------------------------------------------------------
 def test_REG_version_single_source():
-    import tomllib
+    tomllib = pytest.importorskip("tomllib")   # Python >= 3.11
     assert tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"] == __version__
 
 
@@ -171,6 +171,12 @@ def test_sandbox_scrubs_environment(monkeypatch):
 
 
 def test_sandbox_network_isolation():
+    import shutil
+    usable = shutil.which("unshare") and subprocess.run(["unshare", "-rn", "true"], capture_output=True).returncode == 0
+    if not usable:   # e.g. GitHub runners restrict unprivileged user namespaces: the sandbox must refuse, never silently run with network
+        with pytest.raises(SandboxError):
+            safe_run(["true"], allowed={"true"}, no_network=True)
+        return
     r = safe_run([sys.executable, "-c",
                   "import socket;s=socket.socket();s.settimeout(2)\ntry:\n s.connect(('1.1.1.1',53));print('NET')\nexcept OSError:print('NONET')"],
                  allowed={os.path.basename(sys.executable)}, allowed_paths={sys.executable}, no_network=True)
@@ -425,3 +431,11 @@ def test_default_gate_excludes_low_and_medium_confidence_findings(proj, tmp_path
     r = json.loads((out / "run.json").read_text())
     assert any(x["confidence"] in ("low", "medium") and x["status"] == "candidate" for x in r["findings"])
     assert main(["audit", str(only_low), "--output-dir", str(tmp_path / "lo3"), "--fail-on", "info", "--strict"]) == 1
+
+
+def test_default_gate_trips_on_high_confidence_fixture_and_not_on_secure():
+    fx = ROOT / "fixtures" / "android-app"
+    import tempfile
+    with tempfile.TemporaryDirectory() as t:
+        assert main(["audit", str(fx / "vulnerable"), "--output-dir", t + "/v"]) == 1
+        assert main(["audit", str(fx / "secure"), "--output-dir", t + "/s"]) == 0

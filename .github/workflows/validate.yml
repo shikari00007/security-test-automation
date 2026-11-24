@@ -23,11 +23,14 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -e ".[dev]"
-      - name: Audit the intentionally vulnerable fixture (expected to gate)
+      - name: Audit the intentionally vulnerable fixture (default gate must fail with exit 1)
         run: |
           set +e
-          security-skills audit fixtures/web-app/vulnerable --output-dir "$RUNNER_TEMP/art" --report sarif,json,junit,markdown
-          test $? -eq 1
+          security-skills audit fixtures/android-app/vulnerable --output-dir "$RUNNER_TEMP/art" --report sarif,json,junit,markdown
+          rc=$?
+          set -e
+          test "$rc" -eq 1
+          security-skills audit fixtures/android-app/secure --output-dir "$RUNNER_TEMP/art-secure" --report json
       - uses: github/codeql-action/upload-sarif@v3
         if: always()
         with: {sarif_file: "${{ runner.temp }}/art/results.sarif"}
