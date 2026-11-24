@@ -1,0 +1,42 @@
+{
+  "vulnerable": {
+    "SEC-IOS-001": [
+      [
+        "App/Info.plist",
+        9
+      ]
+    ],
+    "SEC-IOS-002": [
+      [
+        "App/App.entitlements",
+        5
+      ]
+    ],
+    "SEC-IOS-003": [
+      [
+        "App/Storage.swift",
+        8
+      ],
+      [
+        "App/Storage.swift",
+        13
+      ]
+    ],
+    "SEC-IOS-004": [
+      [
+        "App/LegacyView.swift",
+        5
+      ],
+      [
+        "App/LegacyView.swift",
+        9
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-IOS-001",
+    "SEC-IOS-002",
+    "SEC-IOS-003",
+    "SEC-IOS-004"
+  ]
+}

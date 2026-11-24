@@ -1,0 +1,16 @@
+{
+  "name": "shop-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "webpack",
+    "test": "mocha"
+  },
+  "dependencies": {
+    "left-pad": "1.3.0",
+    "lodash": "^4.17.21",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "mocha": "^10.2.0"
+  }
+}

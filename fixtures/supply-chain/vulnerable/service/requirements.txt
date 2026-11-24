@@ -1,0 +1,5 @@
+# service dependencies
+flask
+requests>=2.0
+django==4.2.7
+git+https://git.example.test/team/tools.git@main#egg=tools

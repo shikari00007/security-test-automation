@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.vulnapp">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="VulnApp"
+        android:debuggable="true"
+        android:allowBackup="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- <service android:name=".CommentedService" android:exported="true" /> -->
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ShareActivity" android:exported="true" />
+
+        <service android:name=".SyncService">
+            <intent-filter>
+                <action android:name="com.example.vulnapp.SYNC" />
+            </intent-filter>
+        </service>
+
+        <receiver android:name=".SafeReceiver"
+            android:exported="true"
+            android:permission="com.example.vulnapp.permission.INTERNAL" />
+    </application>
+</manifest>

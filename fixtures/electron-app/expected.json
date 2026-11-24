@@ -1,0 +1,73 @@
+{
+  "vulnerable": {
+    "SEC-DSK-001": [
+      [
+        "main.js",
+        7
+      ],
+      [
+        "main.js",
+        8
+      ],
+      [
+        "main.js",
+        9
+      ],
+      [
+        "main.js",
+        10
+      ]
+    ],
+    "SEC-DSK-002": [
+      [
+        "main.js",
+        13
+      ],
+      [
+        "main.js",
+        17
+      ]
+    ],
+    "SEC-DSK-003": [
+      [
+        "package.json",
+        7
+      ],
+      [
+        "updater.js",
+        3
+      ],
+      [
+        "updater.js",
+        4
+      ]
+    ],
+    "SEC-DSK-004": [
+      [
+        "appsettings.json",
+        4
+      ]
+    ],
+    "SEC-DSK-005": [
+      [
+        "legacy/Cache.java",
+        5
+      ],
+      [
+        "legacy/Importer.cs",
+        7
+      ],
+      [
+        "legacy/tool.py",
+        5
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-DSK-001",
+    "SEC-DSK-002",
+    "SEC-DSK-003",
+    "SEC-DSK-004",
+    "SEC-DSK-005"
+  ]
+}

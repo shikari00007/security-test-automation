@@ -1,0 +1,292 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-SC-001",
+      "domain": "supply-chain",
+      "title": "Dependency manifest without a lockfile",
+      "category": "dependency-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "package.json",
+          "Pipfile",
+          "Gemfile",
+          "composer.json",
+          "Cargo.toml",
+          "pyproject.toml"
+        ]
+      },
+      "expected_secure_behavior": "Every dependency manifest has a committed lockfile so builds are reproducible.",
+      "remediation": "Commit package-lock.json / yarn.lock / pnpm-lock.yaml / Pipfile.lock / poetry.lock and install with the frozen-lockfile option in CI.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1357"
+        ],
+        "owasp": [
+          "A06:2021",
+          "A08:2021"
+        ],
+        "asvs": [
+          "14.2.4"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-002",
+      "domain": "supply-chain",
+      "title": "Floating or unpinned dependency specifications",
+      "category": "dependency-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "package.json",
+          "requirements*.txt"
+        ]
+      },
+      "expected_secure_behavior": "Dependencies use bounded versions; Python requirements are pinned with ==.",
+      "remediation": "Replace *, latest, open ranges and branch refs with exact or bounded versions and pin requirements (preferably with hashes).",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1357"
+        ],
+        "owasp": [
+          "A06:2021",
+          "A08:2021"
+        ],
+        "asvs": [
+          "14.2.4"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-003",
+      "domain": "supply-chain",
+      "title": "npm install lifecycle scripts present",
+      "category": "dependency-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "low",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "package.json"
+        ]
+      },
+      "expected_secure_behavior": "Packages do not run code automatically at install time.",
+      "remediation": "Remove preinstall/install/postinstall hooks or move the work to explicit build steps; install with --ignore-scripts where possible.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-829"
+        ],
+        "owasp": [
+          "A08:2021"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-004",
+      "domain": "supply-chain",
+      "title": "GitHub Actions not pinned to a commit SHA",
+      "category": "ci-cd",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          ".github/workflows/*",
+          ".github/actions/*"
+        ]
+      },
+      "expected_secure_behavior": "Third-party actions are pinned to full-length commit SHAs.",
+      "remediation": "Pin each uses: reference to the 40-character commit SHA (with a version comment) and let Dependabot/Renovate update it.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-829",
+          "CWE-1357"
+        ],
+        "owasp": [
+          "A08:2021"
+        ],
+        "other": [
+          "OpenSSF Scorecard: Pinned-Dependencies"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-005",
+      "domain": "supply-chain",
+      "title": "GitHub workflow privilege and injection risks",
+      "category": "ci-cd",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          ".github/workflows/*"
+        ]
+      },
+      "expected_secure_behavior": "Workflows run least-privilege tokens, never check out untrusted PR code under pull_request_target and never interpolate event data into scripts.",
+      "remediation": "Declare permissions: contents: read, avoid head checkout in pull_request_target, and pass event values via env: variables instead of ${{ }} in run:.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-77",
+          "CWE-250"
+        ],
+        "owasp": [
+          "A03:2021"
+        ],
+        "other": [
+          "GitHub Actions security hardening"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-006",
+      "domain": "supply-chain",
+      "title": "Hardcoded secrets in the repository",
+      "category": "secrets",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "No credentials or private keys are committed; secrets are injected at runtime from a secret store.",
+      "remediation": "Rotate the exposed secret, remove it from history, and load it from environment variables or a secrets manager; add secret scanning to CI.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-798"
+        ],
+        "owasp": [
+          "A07:2021"
+        ],
+        "asvs": [
+          "2.10.4"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-008",
+      "domain": "supply-chain",
+      "title": "Dependencies fetched from VCS, URLs or plain HTTP",
+      "category": "dependency-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "package.json",
+          "requirements*.txt",
+          "package-lock.json",
+          "yarn.lock"
+        ]
+      },
+      "expected_secure_behavior": "Dependencies come from the trusted registry with integrity hashes, not directly from VCS or arbitrary URLs.",
+      "remediation": "Publish internal packages to a private registry, pin by version and hash, and never resolve over http://.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-829",
+          "CWE-494"
+        ],
+        "owasp": [
+          "A08:2021"
+        ],
+        "asvs": [
+          "14.2.4"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-SC-020",
+      "domain": "supply-chain",
+      "title": "Known-vulnerable dependencies (OSV)",
+      "category": "dependency-management",
+      "mode": "static",
+      "executor": "external",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "package-lock.json",
+          "yarn.lock",
+          "requirements*.txt",
+          "poetry.lock",
+          "Pipfile.lock",
+          "go.sum"
+        ]
+      },
+      "expected_secure_behavior": "No dependency version in the lockfiles matches a published advisory.",
+      "remediation": "Run osv-scanner against lockfiles, upgrade or patch vulnerable packages and gate CI on new findings.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1395"
+        ],
+        "owasp": [
+          "A06:2021"
+        ],
+        "asvs": [
+          "14.2.1"
+        ]
+      },
+      "rule": "osv-scanner",
+      "maturity": "unimplemented"
+    }
+  ]
+}

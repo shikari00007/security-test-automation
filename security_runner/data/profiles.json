@@ -1,0 +1,8 @@
+{
+  "quick": {"description": "High-confidence static checks only (PR / while coding). Offline, bounded.",
+            "min_profile_tag": "quick", "include_planned": false, "timeout_s": 60},
+  "standard": {"description": "All static checks for applicable domains; manual/dynamic checks listed as untested.",
+               "min_profile_tag": "standard", "include_planned": false, "timeout_s": 180},
+  "deep": {"description": "Standard plus every reviewed dynamic/hybrid/manual check listed as blocked or untested until authorized.",
+           "min_profile_tag": "deep", "include_planned": true, "timeout_s": 600}
+}

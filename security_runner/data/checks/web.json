@@ -1,0 +1,535 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-WEB-001",
+      "domain": "web",
+      "title": "Session cookies set without HttpOnly, Secure and SameSite",
+      "category": "session-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "high",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Session and authentication cookies are issued with HttpOnly, Secure and an explicit SameSite attribute.",
+      "remediation": "Set httpOnly:true, secure:true and sameSite:'lax' or 'strict' on session cookies (SESSION_COOKIE_* in Flask/Django); never write session cookies from JavaScript.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1004",
+          "CWE-614",
+          "CWE-1275"
+        ],
+        "owasp": [
+          "A05:2021"
+        ],
+        "asvs": [
+          "3.4.1",
+          "3.4.2",
+          "3.4.3"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-002",
+      "domain": "web",
+      "title": "DOM XSS sinks fed with non-literal input",
+      "category": "injection",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html"
+        ]
+      },
+      "expected_secure_behavior": "Untrusted data reaches the DOM only through text-safe APIs (textContent) or after sanitisation with a vetted library.",
+      "remediation": "Use textContent/framework interpolation, or pass HTML through DOMPurify.sanitize() before innerHTML, dangerouslySetInnerHTML or v-html.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-79"
+        ],
+        "owasp": [
+          "A03:2021"
+        ],
+        "asvs": [
+          "5.2.2",
+          "5.3.3"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-003",
+      "domain": "web",
+      "title": "Debug mode enabled in production code or configuration",
+      "category": "configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.py",
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          ".env*",
+          "Dockerfile*",
+          "*.yml",
+          "*.yaml"
+        ]
+      },
+      "expected_secure_behavior": "Production builds run with debug/development mode disabled so stack traces and interactive consoles are never exposed.",
+      "remediation": "Set DEBUG=False / NODE_ENV=production in deployed configuration and drive any debug flag from environment settings that default to off.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-489",
+          "CWE-215"
+        ],
+        "owasp": [
+          "A05:2021"
+        ],
+        "asvs": [
+          "14.3.2"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-004",
+      "domain": "web",
+      "title": "Permissive CORS with wildcard or reflected origin and credentials",
+      "category": "configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Credentialed cross-origin requests are allowed only for an explicit allowlist of trusted origins.",
+      "remediation": "Replace wildcard/reflected origins with a fixed allowlist, or disable credentials; never echo the Origin header without validating it.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-942",
+          "CWE-346"
+        ],
+        "owasp": [
+          "A05:2021"
+        ],
+        "asvs": [
+          "14.5.3"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-005",
+      "domain": "web",
+      "title": "Command and code injection sinks built from dynamic strings",
+      "category": "injection",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Commands are executed with argument vectors (execFile, subprocess list form) and no input is passed to eval or Function.",
+      "remediation": "Use execFile/spawn or subprocess.run([...]) without a shell, validate arguments against an allowlist and remove eval/new Function.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-78",
+          "CWE-95",
+          "CWE-94"
+        ],
+        "owasp": [
+          "A03:2021"
+        ],
+        "asvs": [
+          "5.2.4",
+          "5.3.8"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-006",
+      "domain": "web",
+      "title": "SQL statements built by string concatenation or interpolation",
+      "category": "injection",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py",
+          "*.java",
+          "*.kt",
+          "*.rb",
+          "*.php",
+          "*.go"
+        ]
+      },
+      "expected_secure_behavior": "Database queries use parameterised statements or an ORM; user input is never concatenated into SQL text.",
+      "remediation": "Switch to placeholders/prepared statements (cursor.execute(sql, params), $1 bindings) and allowlist any dynamic identifiers.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-89"
+        ],
+        "owasp": [
+          "A03:2021"
+        ],
+        "asvs": [
+          "5.3.4"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-007",
+      "domain": "web",
+      "title": "TLS certificate verification disabled",
+      "category": "transport-security",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py",
+          ".env*",
+          "Dockerfile*",
+          "*.yml",
+          "*.yaml",
+          "*.sh"
+        ]
+      },
+      "expected_secure_behavior": "Outbound TLS connections validate certificate chains and hostnames.",
+      "remediation": "Remove verify=False / rejectUnauthorized:false / NODE_TLS_REJECT_UNAUTHORIZED=0; install the proper CA bundle for private CAs instead.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-295"
+        ],
+        "owasp": [
+          "A07:2021"
+        ],
+        "asvs": [
+          "9.2.1"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-008",
+      "domain": "web",
+      "title": "Weak password hashing or insecure randomness for tokens",
+      "category": "cryptography",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Passwords are stored with a slow adaptive KDF (bcrypt, scrypt, Argon2) and tokens come from a CSPRNG.",
+      "remediation": "Hash passwords with bcrypt/Argon2id and generate tokens with secrets.token_urlsafe or crypto.randomBytes instead of Math.random/random.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-327",
+          "CWE-328",
+          "CWE-916",
+          "CWE-338"
+        ],
+        "owasp": [
+          "A02:2021"
+        ],
+        "asvs": [
+          "2.4.1",
+          "6.3.1"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-009",
+      "domain": "web",
+      "title": "Open redirect driven by request parameter",
+      "category": "access-control",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Redirect targets come from a server-side allowlist or are validated as same-site relative paths.",
+      "remediation": "Map user input to known destinations or validate with url_has_allowed_host_and_scheme / a strict relative-path check before redirecting.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-601"
+        ],
+        "owasp": [
+          "A01:2021"
+        ],
+        "asvs": [
+          "5.1.5"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-010",
+      "domain": "web",
+      "title": "CSRF protection disabled or exempted",
+      "category": "session-management",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py",
+          "*.java",
+          "*.kt",
+          "*.rb",
+          "*.php"
+        ]
+      },
+      "expected_secure_behavior": "State-changing endpoints enforce anti-CSRF tokens or equivalent same-site protections.",
+      "remediation": "Re-enable the framework CSRF middleware and remove blanket exemptions; secure webhook endpoints with signature verification instead.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-352"
+        ],
+        "owasp": [
+          "A01:2021"
+        ],
+        "asvs": [
+          "4.2.2"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-WEB-050",
+      "domain": "web",
+      "title": "Session is invalidated server-side after logout",
+      "category": "session-management",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "After logout the old session token is rejected by the server and cannot be replayed.",
+      "remediation": "Destroy the server-side session (or revoke the token) on logout and verify replay of the old token returns 401.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-613"
+        ],
+        "owasp": [
+          "A07:2021"
+        ],
+        "asvs": [
+          "3.3.1"
+        ]
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-WEB-051",
+      "domain": "web",
+      "title": "File upload validation (type, size, storage location)",
+      "category": "input-validation",
+      "mode": "hybrid",
+      "executor": "none",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Uploads are validated for content type, size and name, stored outside the web root, and never executed.",
+      "remediation": "Enforce allowlisted types by content sniffing, size limits, randomised storage names and non-executable storage.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-434"
+        ],
+        "owasp": [
+          "A04:2021"
+        ],
+        "asvs": [
+          "12.1.1",
+          "12.2.1"
+        ]
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-WEB-052",
+      "domain": "web",
+      "title": "Login rate limiting and account lockout",
+      "category": "authentication",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Repeated failed logins are throttled or locked out and cannot be brute-forced.",
+      "remediation": "Add per-account and per-IP throttling with progressive delays, lockout or CAPTCHA and alerting on credential stuffing.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-307"
+        ],
+        "owasp": [
+          "A07:2021"
+        ],
+        "asvs": [
+          "2.2.1"
+        ]
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

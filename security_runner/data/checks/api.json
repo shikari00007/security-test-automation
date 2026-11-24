@@ -1,0 +1,307 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-API-001",
+      "domain": "api",
+      "title": "OpenAPI operations without a security requirement",
+      "category": "authentication",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*openapi*",
+          "*swagger*",
+          "*api*.json",
+          "*api*.yaml",
+          "*api*.yml"
+        ]
+      },
+      "expected_secure_behavior": "Every operation declares a security requirement (globally or per operation); public endpoints opt out explicitly with security: [].",
+      "remediation": "Add a global security requirement and securitySchemes, and mark intentionally public operations with an explicit empty security list.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-306"
+        ],
+        "owasp": [
+          "A01:2021",
+          "API2:2023"
+        ],
+        "asvs": [
+          "4.1.1"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-002",
+      "domain": "api",
+      "title": "API key or token accepted in the query string",
+      "category": "authentication",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*openapi*",
+          "*swagger*",
+          "*api*.json",
+          "*api*.yaml",
+          "*api*.yml"
+        ]
+      },
+      "expected_secure_behavior": "Credentials travel in headers (Authorization or a custom header), never in URLs that end up in logs and referrers.",
+      "remediation": "Move apiKey schemes and credential-like parameters to the header location.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-598"
+        ],
+        "owasp": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "8.3.1"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-003",
+      "domain": "api",
+      "title": "API server URLs use plain HTTP",
+      "category": "transport-security",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*openapi*",
+          "*swagger*",
+          "*api*.json",
+          "*api*.yaml",
+          "*api*.yml"
+        ]
+      },
+      "expected_secure_behavior": "All non-local server URLs in the API contract use HTTPS.",
+      "remediation": "Declare https:// servers (or remove http from swagger schemes) and redirect/HSTS on the gateway.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-319"
+        ],
+        "owasp": [
+          "A02:2021",
+          "API8:2023"
+        ],
+        "asvs": [
+          "9.1.1"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-004",
+      "domain": "api",
+      "title": "JWT verification disabled, alg none or audience not validated",
+      "category": "authentication",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "JWTs are verified with a pinned algorithm list, signature, expiry, issuer and audience checks.",
+      "remediation": "Always verify signatures, pin algorithms, validate exp/iss/aud and remove verify_signature=False / ignoreExpiration / alg none.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-347",
+          "CWE-287"
+        ],
+        "owasp": [
+          "A07:2021",
+          "API2:2023"
+        ],
+        "asvs": [
+          "3.5.3"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-005",
+      "domain": "api",
+      "title": "GraphQL introspection or IDE enabled in production configuration",
+      "category": "configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py",
+          "*.json",
+          "*.yml",
+          "*.yaml",
+          "*.toml",
+          ".env*"
+        ]
+      },
+      "expected_secure_behavior": "Introspection and GraphQL playgrounds are disabled in production.",
+      "remediation": "Gate introspection/playground/graphiql on a non-production environment flag and require auth for schema access.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-200"
+        ],
+        "owasp": [
+          "A05:2021",
+          "API8:2023"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-006",
+      "domain": "api",
+      "title": "Mass assignment from request body into models",
+      "category": "input-validation",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.js",
+          "*.jsx",
+          "*.ts",
+          "*.tsx",
+          "*.mjs",
+          "*.vue",
+          "*.html",
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Only an explicit allowlist of fields from the request body is bound to a model.",
+      "remediation": "Bind fields explicitly or use DTO/schema validation with an allowlist; never pass the raw body to Model(**data), Model.create or Object.assign.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-915"
+        ],
+        "owasp": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "5.1.2"
+        ]
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-API-050",
+      "domain": "api",
+      "title": "Broken object-level authorization (two-identity test)",
+      "category": "access-control",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "User B cannot read or modify objects owned by user A by changing object identifiers.",
+      "remediation": "Enforce object-level ownership checks on every identifier-based route and add a two-identity regression test.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-639"
+        ],
+        "owasp": [
+          "A01:2021",
+          "API1:2023"
+        ],
+        "asvs": [
+          "4.2.1"
+        ]
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-API-051",
+      "domain": "api",
+      "title": "Schema conformance fuzzing with Schemathesis",
+      "category": "input-validation",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "The implementation conforms to its OpenAPI contract and handles malformed input without 5xx errors.",
+      "remediation": "Run Schemathesis against a test deployment, fix crashes and contract drift, and keep the run in CI.",
+      "review_state": "reviewed",
+      "standards": {
+        "other": [
+          "Schemathesis"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "schemathesis"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

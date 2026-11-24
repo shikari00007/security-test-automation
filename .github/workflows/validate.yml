@@ -1,0 +1,37 @@
+name: validate
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python }}"}
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q
+      - run: security-skills skills validate skills
+      - run: security-skills catalog validate-checks
+  self-audit-and-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ".[dev]"
+      - name: Audit the intentionally vulnerable fixture (expected to gate)
+        run: |
+          set +e
+          security-skills audit fixtures/web-app/vulnerable --output-dir "$RUNNER_TEMP/art" --report sarif,json,junit,markdown
+          test $? -eq 1
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: {sarif_file: "${{ runner.temp }}/art/results.sarif"}
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: security-artifacts, path: "${{ runner.temp }}/art"}

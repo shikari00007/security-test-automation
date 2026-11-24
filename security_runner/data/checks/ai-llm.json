@@ -1,0 +1,230 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-AI-001",
+      "domain": "ai-llm",
+      "title": "Model output flows to eval/exec/shell/SQL sinks (partial SQL coverage)",
+      "category": "Insecure output handling",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.py",
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.ts"
+        ]
+      },
+      "expected_secure_behavior": "Model output is treated as untrusted: it is parsed against a schema and mapped to allowlisted actions, never executed or concatenated into queries.",
+      "remediation": "Remove eval/exec/shell use of model output; parse structured output, map to an allowlist of actions and use parameterised queries.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1426",
+          "CWE-94",
+          "CWE-78",
+          "CWE-89"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM05 Improper Output Handling"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "experimental"
+    },
+    {
+      "id": "SEC-AI-002",
+      "domain": "ai-llm",
+      "title": "MCP/agent config with launchers not pinned to an exact version, broad filesystem roots or inline tokens",
+      "category": "Supply chain / configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*mcp*.json",
+          "*mcp*.yaml",
+          "*mcp*.yml",
+          "claude_desktop_config.json"
+        ]
+      },
+      "expected_secure_behavior": "MCP servers launched via npx/uvx are pinned to an exact version or immutable ref (version ranges and dist-tags such as ^1.2, >=1, latest, next are not pins), scoped to a project directory and receive credentials from the environment, not the file.",
+      "remediation": "Pin packages to exact versions (name@1.2.3 or name==1.2.3) or a commit SHA, restrict filesystem roots to the project directory, and reference secrets via environment variables; rotate any exposed token.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-829",
+          "CWE-798",
+          "CWE-250"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM03 Supply Chain",
+          "OWASP LLM Top 10 2025: LLM06 Excessive Agency"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "experimental"
+    },
+    {
+      "id": "SEC-AI-003",
+      "domain": "ai-llm",
+      "title": "Agent tools enabling shell/Python REPL/dangerous code without approval or sandbox marker",
+      "category": "Excessive agency",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.py",
+          "*.js",
+          "*.mjs",
+          "*.cjs",
+          "*.ts",
+          "*.yaml",
+          "*.yml",
+          "*.toml"
+        ]
+      },
+      "expected_secure_behavior": "Agents get least-privilege tools; shell or code execution is gated by human approval or runs in an isolated sandbox/container without secrets, within the same function that wires the tool.",
+      "remediation": "Remove dangerous tools or gate them with human approval or a sandbox; disable allow_dangerous_code and dangerouslyAllowBrowser.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-250",
+          "CWE-94"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM06 Excessive Agency"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "experimental"
+    },
+    {
+      "id": "SEC-AI-004",
+      "domain": "ai-llm",
+      "title": "Model artifact loading: trust_remote_code=True, pickle-family or unsafe torch.load of downloaded data",
+      "category": "Supply chain / configuration",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "low",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.py"
+        ]
+      },
+      "expected_secure_behavior": "Models load from non-executable formats (e.g. safetensors) or torch.load(weights_only=True) on PyTorch >= 2.6.0, remote code is disabled or pinned to a reviewed 40-hex revision, and pickle-based artifacts are only loaded from integrity-checked trusted sources.",
+      "remediation": "Remove trust_remote_code=True or pin a reviewed revision; prefer safetensors; use torch.load(weights_only=True) on a patched PyTorch (>= 2.6.0); verify hashes of downloaded artifacts and never unpickle untrusted data.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-502",
+          "CWE-829",
+          "CWE-494"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM03 Supply Chain"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "experimental"
+    },
+    {
+      "id": "SEC-AI-050",
+      "domain": "ai-llm",
+      "title": "Prompt injection and indirect injection evaluation",
+      "category": "Prompt injection",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Untrusted content cannot cause the model to override instructions, call unintended tools or exfiltrate data.",
+      "remediation": "Separate trusted instructions from untrusted data, restrict tool permissions, filter outputs, and run a repeatable injection suite against an authorized environment.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-1427"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM01 Prompt Injection"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-AI-051",
+      "domain": "ai-llm",
+      "title": "RAG data-boundary and tenant isolation test",
+      "category": "Data isolation",
+      "mode": "hybrid",
+      "executor": "none",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Retrieval is filtered by the caller's tenant and entitlements so no cross-tenant content can be retrieved or cited.",
+      "remediation": "Enforce tenant/ACL filters at the vector store query layer, test with multi-tenant canary documents and log retrieval provenance.",
+      "review_state": "reviewed",
+      "standards": {
+        "cwe": [
+          "CWE-639",
+          "CWE-200"
+        ],
+        "owasp": [
+          "OWASP LLM Top 10 2025: LLM02 Sensitive Information Disclosure",
+          "OWASP LLM Top 10 2025: LLM08 Vector and Embedding Weaknesses"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

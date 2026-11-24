@@ -1,0 +1,303 @@
+{
+  "schema_version": "1.0",
+  "checks": [
+    {
+      "id": "SEC-AND-001",
+      "domain": "android",
+      "title": "Exported component without permission protection",
+      "category": "Platform interaction",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "AndroidManifest.xml"
+        ]
+      },
+      "expected_secure_behavior": "Components that are not meant for other apps are android:exported=false; exported components are guarded by a signature-level permission.",
+      "remediation": "Set android:exported=\"false\" on internal components and add android:permission (protectionLevel signature) to components that must be exported. Explicitly declare android:exported on every component with an intent-filter.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-PLATFORM-1"
+        ],
+        "cwe": [
+          "CWE-926"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M8 Security Misconfiguration"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-002",
+      "domain": "android",
+      "title": "Application is debuggable in manifest",
+      "category": "Resilience / build",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "AndroidManifest.xml"
+        ]
+      },
+      "expected_secure_behavior": "Release builds do not set android:debuggable=true.",
+      "remediation": "Remove android:debuggable from the manifest (build tooling sets it per variant) and verify release variants are not debuggable.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-RESILIENCE-4"
+        ],
+        "cwe": [
+          "CWE-489"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M7 Insufficient Binary Protections"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-003",
+      "domain": "android",
+      "title": "Application data backup enabled",
+      "category": "Storage",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "AndroidManifest.xml"
+        ]
+      },
+      "expected_secure_behavior": "android:allowBackup is false, or backup rules exclude sensitive data.",
+      "remediation": "Set android:allowBackup=\"false\" or define android:fullBackupContent / dataExtractionRules that exclude tokens, databases and credentials.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-STORAGE-2"
+        ],
+        "cwe": [
+          "CWE-921"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M9 Insecure Data Storage"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-004",
+      "domain": "android",
+      "title": "Cleartext (HTTP) traffic permitted",
+      "category": "Network",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "high",
+      "profiles": [
+        "quick",
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "AndroidManifest.xml",
+          "res/xml/*.xml"
+        ]
+      },
+      "expected_secure_behavior": "The app only communicates over TLS; cleartext traffic is disabled globally.",
+      "remediation": "Remove android:usesCleartextTraffic=\"true\" and cleartextTrafficPermitted=\"true\"; serve all endpoints over HTTPS and scope any exception to a specific dev-only domain.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-NETWORK-1"
+        ],
+        "cwe": [
+          "CWE-319"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M5 Insecure Communication"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-005",
+      "domain": "android",
+      "title": "WebView with JavaScript enabled exposes JS bridge or file access",
+      "category": "Platform interaction",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.java",
+          "*.kt"
+        ]
+      },
+      "expected_secure_behavior": "WebViews load only trusted content and do not combine JavaScript with addJavascriptInterface or file-URL access.",
+      "remediation": "Avoid addJavascriptInterface for untrusted content, disable setAllowFileAccess and file-URL universal access, restrict navigation to an allowlist of HTTPS origins and annotate bridge methods with @JavascriptInterface only where needed.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-PLATFORM-2"
+        ],
+        "cwe": [
+          "CWE-749",
+          "CWE-79"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M4 Insufficient Input/Output Validation"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-006",
+      "domain": "android",
+      "title": "Insecure local storage (world-accessible files, plaintext secrets in SharedPreferences)",
+      "category": "Storage",
+      "mode": "static",
+      "executor": "builtin",
+      "severity": "high",
+      "confidence": "medium",
+      "profiles": [
+        "standard",
+        "deep"
+      ],
+      "applies_to": {
+        "file_globs": [
+          "*.java",
+          "*.kt"
+        ]
+      },
+      "expected_secure_behavior": "Files use MODE_PRIVATE and secrets live in the Android Keystore or EncryptedSharedPreferences.",
+      "remediation": "Never use MODE_WORLD_READABLE/WRITEABLE; store tokens and passwords with EncryptedSharedPreferences (Jetpack Security) or Keystore-backed keys, and avoid persisting passwords at all.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-STORAGE-1"
+        ],
+        "cwe": [
+          "CWE-312",
+          "CWE-732"
+        ],
+        "owasp": [
+          "OWASP Mobile Top 10 2024: M9 Insecure Data Storage"
+        ]
+      },
+      "regression": {
+        "supported": true,
+        "framework": "none"
+      },
+      "maturity": "preview"
+    },
+    {
+      "id": "SEC-AND-050",
+      "domain": "android",
+      "title": "Runtime certificate-pinning bypass and instrumentation resistance review",
+      "category": "Resilience / network",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Pinning and tamper checks hold when the app is run under an instrumentation framework on an authorized test device.",
+      "remediation": "Implement pinning via network security config pins, add layered integrity checks and document what is accepted risk. Test only on authorized devices with the owner's consent.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-NETWORK-2",
+          "MASVS-RESILIENCE-1"
+        ],
+        "cwe": [
+          "CWE-295"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    },
+    {
+      "id": "SEC-AND-051",
+      "domain": "android",
+      "title": "Intent fuzzing of exported components",
+      "category": "Platform interaction",
+      "mode": "dynamic",
+      "executor": "none",
+      "severity": "medium",
+      "confidence": "medium",
+      "profiles": [
+        "deep"
+      ],
+      "applies_to": {},
+      "expected_secure_behavior": "Exported components handle malformed or malicious intents without crashing or leaking data.",
+      "remediation": "Validate all intent extras and URIs, use explicit intents internally and fix crashes or data exposure found by fuzzing the exported surface on an authorized test device.",
+      "review_state": "reviewed",
+      "standards": {
+        "masvs": [
+          "MASVS-PLATFORM-1"
+        ],
+        "cwe": [
+          "CWE-927"
+        ]
+      },
+      "regression": {
+        "supported": false,
+        "framework": "none"
+      },
+      "maturity": "unimplemented"
+    }
+  ]
+}

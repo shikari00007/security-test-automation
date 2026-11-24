@@ -1,0 +1,92 @@
+{
+  "vulnerable": {
+    "SEC-API-001": [
+      [
+        "spec/openapi.yaml",
+        10
+      ],
+      [
+        "spec/openapi.yaml",
+        21
+      ],
+      [
+        "spec/swagger.json",
+        8
+      ]
+    ],
+    "SEC-API-002": [
+      [
+        "spec/openapi.yaml",
+        13
+      ],
+      [
+        "spec/openapi.yaml",
+        37
+      ]
+    ],
+    "SEC-API-003": [
+      [
+        "spec/openapi.yaml",
+        6
+      ],
+      [
+        "spec/swagger.json",
+        5
+      ]
+    ],
+    "SEC-API-004": [
+      [
+        "src/auth.js",
+        5
+      ],
+      [
+        "src/auth.js",
+        9
+      ],
+      [
+        "src/server.py",
+        9
+      ],
+      [
+        "src/server.py",
+        13
+      ]
+    ],
+    "SEC-API-005": [
+      [
+        "src/apollo.js",
+        6
+      ],
+      [
+        "src/apollo.js",
+        7
+      ],
+      [
+        "src/server.py",
+        21
+      ]
+    ],
+    "SEC-API-006": [
+      [
+        "src/auth.js",
+        14
+      ],
+      [
+        "src/auth.js",
+        19
+      ],
+      [
+        "src/server.py",
+        17
+      ]
+    ]
+  },
+  "secure_clean": [
+    "SEC-API-001",
+    "SEC-API-002",
+    "SEC-API-003",
+    "SEC-API-004",
+    "SEC-API-005",
+    "SEC-API-006"
+  ]
+}

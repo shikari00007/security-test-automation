@@ -1,0 +1,15 @@
+{
+  "swagger": "2.0",
+  "info": {"title": "Legacy", "version": "1"},
+  "host": "legacy.orders.test",
+  "schemes": ["https"],
+  "securityDefinitions": {"basic": {"type": "basic"}},
+  "security": [{"basic": []}],
+  "paths": {
+    "/items": {
+      "get": {
+        "responses": {"200": {"description": "ok"}}
+      }
+    }
+  }
+}
