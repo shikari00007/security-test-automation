@@ -1,10 +1,10 @@
 ---
 name: cloud-kubernetes-security
 description: "Reviews infrastructure-as-code and manifests (Terraform, CloudFormation, Kubernetes YAML, Helm, Kustomize, Dockerfiles) for public exposure, over-broad IAM and RBAC, privileged pods, missing network policy, unencrypted storage and secrets in manifests, offline; live cluster or cloud API audits only with written scope. Use when the project contains IaC or Kubernetes files, or the user asks for a cloud or Kubernetes review. Not for: attacking running clusters or cloud accounts, production changes, application-code review (web/api skills), credential attacks."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -69,7 +69,7 @@ Evaluate declared infrastructure and workload configuration; treat live cluster 
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

@@ -1,10 +1,10 @@
 ---
 name: supply-chain-security
 description: "Reviews dependency manifests, lockfiles, CI/CD workflows, build and container definitions and secrets handling for dependency confusion, unpinned or vulnerable components, risky CI permissions, script injection, missing integrity and provenance, and committed secrets, offline first. Use when a project has package manifests, lockfiles, CI workflows, Dockerfiles or release scripts; it is always eligible. Not for: running installers or build scripts from untrusted code, probing registries or CI systems without written scope, cloud runtime review (cloud-kubernetes-security)."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -69,7 +69,7 @@ Assess how code, dependencies and artifacts are built and shipped. Read manifest
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

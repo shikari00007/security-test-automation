@@ -50,6 +50,10 @@ def main(argv=None) -> int:
     ap.add_argument("--rc", default=str(ROOT / "dist" / "release-candidate"))
     ap.add_argument("--report", default=str(ROOT / "dist" / "release-gate-report"))
     ap.add_argument("--skip-npx", action="store_true")
+    ap.add_argument("--raw", default=str(ROOT / "catalog" / "raw"),
+                    help="private raw checklist inventory used by the restricted-content scan (maintainers only)")
+    ap.add_argument("--require-restricted-scan", action="store_true",
+                    help="fail (instead of skip) when the private raw inventory is unavailable")
     a = ap.parse_args(argv)
     rc = Path(a.rc).resolve()
     t0 = time.time()
@@ -64,16 +68,18 @@ def main(argv=None) -> int:
     man = {l.split()[-1]: l.split()[0] for l in (rc / "RELEASE-MANIFEST.txt").read_text().splitlines()}
     check("G1-content", "manifest lists every published file with a matching sha256",
           set(man) == set(files) and all(hashlib.sha256((rc / f).read_bytes()).hexdigest() == h for f, h in man.items()))
-    scan = scan_restricted.scan(rc, ROOT / "catalog" / "raw")
+    scan = scan_restricted.scan(rc, Path(a.raw))
+    skipped = "FAIL" if a.require_restricted_scan else "SKIPPED"
     record("G1-content", "no reproduced checklist text (10-word runs / full entries vs private raw inventory)",
-           {"PASS": "PASS", "FAIL": "FAIL", "SKIPPED": "FAIL"}[scan["status"]],
+           {"PASS": "PASS", "FAIL": "FAIL", "SKIPPED": skipped}[scan["status"]],
            scan.get("reason") or scan["hits"][:3])
     check("G1-content", "no *.zip/*.jsonl/raw checklist filenames in release",
           not [f for f in files if f.endswith((".zip", ".jsonl")) or f.rsplit("/", 1)[-1] in
                ("API.txt", "Android.txt", "IOS.txt", "Thick-Client.txt", "WEB -1.txt", "WEB -2.txt", "web-seclist.txt", "supplychainsecurity.md")])
     third = (rc / "docs/THIRD-PARTY.md").read_text()
-    check("G1-licence", "LICENSE is full Apache-2.0, NOTICE present, upstream SHAs pinned",
-          "Apache License" in (rc / "LICENSE").read_text() and (rc / "NOTICE").is_file()
+    check("G1-licence", "LICENSE is MIT (Copyright 2026 shikari00007), NOTICE present, upstream SHAs pinned",
+          (rc / "LICENSE").read_text().startswith("MIT License\n") and "Copyright (c) 2026 shikari00007" in (rc / "LICENSE").read_text()
+          and (rc / "NOTICE").is_file()
           and all(s in third for s in ("5087a3461d49da76b1e794d9b0bfbd23f38dc75b", "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
                                        "6196ba7464662de34e8744d359f175d1a7bca530")))
     readme = (rc / "README.md").read_text()
@@ -98,12 +104,25 @@ def main(argv=None) -> int:
             check("G2-packaging", "wheel contains package data (domains, profiles, schema, 8 check files)",
                   all(any(n.endswith(x) for n in names) for x in ("data/domains.json", "data/profiles.json", "data/schemas/check.schema.json"))
                   and sum(1 for n in names if "data/checks/" in n and n.endswith(".json")) == 8)
+            meta_name = next((n for n in names if n.endswith(".dist-info/METADATA")), None)
+            meta_txt = zipfile.ZipFile(wheels[0]).read(meta_name).decode() if meta_name else ""
+            headers = meta_txt.split("\n\n", 1)[0]   # the README (long description) may legitimately cite the historical release
+            check("G2-packaging", "wheel METADATA declares License-Expression: MIT (and not Apache)",
+                  "License-Expression: MIT" in headers and "Apache" not in headers, headers[:300])
+            lic_in_wheel = next((n for n in names if n.endswith("licenses/LICENSE") or n.endswith("dist-info/LICENSE")), None)
+            check("G2-packaging", "LICENSE inside the wheel is the MIT text",
+                  bool(lic_in_wheel) and zipfile.ZipFile(wheels[0]).read(lic_in_wheel).decode().startswith("MIT License"))
             check("G2-packaging", "wheel ships LICENSE+NOTICE and no tests/fixtures/catalog/catalogtool",
                   any(n.endswith("licenses/LICENSE") or n.endswith("dist-info/LICENSE") for n in names)
                   and not [n for n in names if n.startswith(("tests/", "fixtures/", "catalog/")) or "catalogtool" in n],
                   [n for n in names if "licen" in n.lower()][:4])
             import tarfile
             snames = tarfile.open(sdists[0]).getnames()
+            sd = tarfile.open(sdists[0])
+            lic_member = next((m for m in sd.getmembers() if m.name.endswith("/LICENSE")), None)
+            check("G2-packaging", "sdist contains the MIT LICENSE and NOTICE",
+                  bool(lic_member) and sd.extractfile(lic_member).read().decode().startswith("MIT License")
+                  and any(n.endswith("/NOTICE") for n in snames))
             check("G2-packaging", "sdist has no restricted/internal paths",
                   not [n for n in snames if "/catalog/" in n or "baseline" in n or n.endswith(".jsonl")])
         # ---- G3 clean install, runtime behaviour --------------------------------------------------------
@@ -264,7 +283,7 @@ def main(argv=None) -> int:
                     cwd=proj2b, env={"HOME": str(home)}, timeout=300)
             check("G5-agents", "single-skill install (--skill security-start) works", r.returncode == 0, r.stderr[-200:])
         record("G6-published", "`npx skills add shikari00007/security-test-automation` from the PUBLISHED repo",
-               "PENDING", "repository not published; run scripts/verify_published.sh after authorized publication")
+               "SKIPPED", "network check against GitHub; run scripts/verify_published.sh separately after each publication")
         # RC tree untouched by the gate
         check("G1-content", "release tree unchanged by gate run", tree_digest(rc) == digest_before)
 

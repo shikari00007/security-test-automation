@@ -1,14 +1,16 @@
 ---
 name: ai-llm-security
 description: "Reviews applications that embed LLMs, agents, RAG or MCP servers for prompt injection paths, excessive agency, insecure output handling, secret and data leakage, tool authorization, vector store tenant isolation and unbounded consumption by configuration, offline first; prompt evaluations only in an authorized isolated environment with synthetic data. Use when code imports LLM SDKs, defines agent tools, prompts, MCP servers or vector stores. Not for: model training research, jailbreaking third-party hosted services, testing production chatbots, credential attacks, or output quality evaluation."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
 # AI and LLM Application Security
+
+> **Developer Preview.** The AI/LLM static rules are experimental (no true positive observed in field checks, recall unmeasured), static results are candidates, and dynamic testing is unimplemented in the CLI.
 
 Assess how untrusted text reaches a model and what the model's output can reach: tools, files, networks, databases, other users.
 
@@ -67,7 +69,7 @@ Assess how untrusted text reaches a model and what the model's output can reach:
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

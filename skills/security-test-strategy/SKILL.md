@@ -1,10 +1,10 @@
 ---
 name: security-test-strategy
 description: "Chooses which security checks to run for a project: maps detected domains and risk to Quick/Standard/Deep selections, evaluates applicability per check, states required tools and access, and produces a plan with explicit exclusions and blocked reasons. Use when planning a security review, deciding profile depth, prioritizing by risk, or explaining why checks were skipped. Not for: executing the checks (security-do and domain skills), coverage arithmetic after a run (security-coverage-analysis), or live probing."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -68,7 +68,7 @@ Produce a deterministic, explainable plan before anything runs: which domains, w
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

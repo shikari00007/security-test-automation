@@ -16,6 +16,8 @@ jobs:
       - run: python -m pytest -q
       - run: security-skills skills validate skills
       - run: security-skills catalog validate-checks
+      - run: python scripts/check_public_mit.py .
+      - run: python scripts/check_links.py
   self-audit-and-regression:
     runs-on: ubuntu-latest
     steps:
@@ -38,3 +40,26 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: security-artifacts, path: "${{ runner.temp }}/art"}
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install build
+      - run: python -m build --outdir "$RUNNER_TEMP/dist" .
+      - name: Verify MIT licence metadata in wheel and sdist
+        run: |
+          python - <<'PY'
+          import glob, os, tarfile, zipfile
+          d = os.environ["RUNNER_TEMP"] + "/dist"
+          whl = zipfile.ZipFile(glob.glob(d + "/*.whl")[0])
+          meta = whl.read(next(n for n in whl.namelist() if n.endswith(".dist-info/METADATA"))).decode()
+          headers = meta.split("\n\n", 1)[0]   # the README (long description) may cite the historical release
+          assert "License-Expression: MIT" in headers and "Apache" not in headers, headers[:300]
+          lic = next(n for n in whl.namelist() if n.endswith("/LICENSE"))
+          assert whl.read(lic).decode().startswith("MIT License")
+          sd = tarfile.open(glob.glob(d + "/*.tar.gz")[0])
+          assert any(m.name.endswith("/LICENSE") for m in sd.getmembers())
+          print("license metadata OK")
+          PY

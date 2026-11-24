@@ -1,10 +1,10 @@
 ---
 name: security-start
 description: "Entry point that detects what a local project is (web, API, Android, iOS, desktop, supply chain, cloud/Kubernetes, AI/LLM), explains the evidence, suggests a Quick/Standard/Deep profile and lists the skills and access needed. Use when the user opens a repository and asks where to begin a security review, what applies, or which security skills to run. Not for: running the audit itself (use security-do), writing findings (security-reporting), or scanning any live host."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -68,7 +68,7 @@ Orient the user. Inspect only the local path they chose, show which security dom
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

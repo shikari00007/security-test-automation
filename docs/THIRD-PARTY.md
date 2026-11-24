@@ -12,4 +12,11 @@
 **Third-party checklists are not part of this repository.** Source checklists supplied to the maintainers were used privately to inform the catalog design; redistribution rights have not been confirmed, so neither their text nor derived normalized entries are published. A release-time scanner (`scripts/scan_restricted.py`) checks the published tree for reproduced checklist text against the private inventory.
 
 ## Licensing of this project
-Original code, skills, documentation, fixtures and AI-assisted contributions: **Apache-2.0**, Copyright 2026 shikari00007. The maintainer has confirmed (2026-11-24) that they own or have the necessary rights to license this original content. This confirmation excludes third-party security checklists and any external material without verified redistribution rights; those are not part of this repository.
+
+**Current mainline: MIT License, Copyright (c) 2026 shikari00007** (see `LICENSE`, `NOTICE`).
+
+- The maintainer, who is the sole author of the repository history (verified from the commit log and the GitHub contributors list), confirmed on 2026-11-24 that they own the rights to the original code, skills, documentation, fixtures and AI-assisted contributions, and re-confirmed the intent to relicense current `main` under MIT on 2026-11-25. This is the maintainer's attestation; it has not been independently verified.
+- **Historical release:** `v0.3.0rc1` was published under Apache-2.0 and keeps those terms. Permissions already granted under Apache-2.0 are not revoked.
+- No third-party code, text or media is vendored. The upstream projects above are MIT-licensed methodology references; nothing was copied, so no upstream notice is reproduced beyond this attribution.
+- Third-party security checklists used privately during development, and any normalized or derived copies, are **not** part of this repository (redistribution rights unconfirmed).
+- Future contributions are accepted under MIT (see `CONTRIBUTING.md`); contributors must record any third-party material here with its license and pinned revision.

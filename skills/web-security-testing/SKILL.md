@@ -1,10 +1,10 @@
 ---
 name: web-security-testing
 description: "Reviews web application code and configuration for authentication, session, access control, injection, XSS, CSRF, headers, SSRF, file handling and enterprise SSO (SAML/OIDC/LDAP) weaknesses, offline first with optional authorized lab testing. Use when a repository contains a web frontend or server-rendered app, or the user asks for a web security review. Not for: pure API contracts (api-security-testing), mobile or desktop clients, scanning hosts without written scope, brute force, or DoS."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -71,7 +71,7 @@ Find and evidence web-layer weaknesses in source and configuration. Static revie
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 
