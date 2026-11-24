@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (0.3.1.dev0) - public mainline refresh
+- **License:** current mainline relicensed from Apache-2.0 to **MIT** (Copyright (c) 2026 shikari00007). The historical `v0.3.0rc1` release remains Apache-2.0 and unchanged. Package metadata (`License-Expression: MIT`), all 16 `SKILL.md` files, `LICENSE`, `NOTICE`, `CONTRIBUTING.md` and `docs/THIRD-PARTY.md` updated.
+- **Docs:** README rewritten (install, prompts, agents, skills catalog, domains, profiles, CLI, workflow, regression testing, limitations); CONTRIBUTING expanded (setup, creating a skill, contributing a check, verification and compatibility rules); SECURITY.md now points at private vulnerability reporting; issue and PR templates added.
+- **Skills:** removed stale "not yet published" wording (the CLI installs from GitHub: `pip install git+https://github.com/shikari00007/security-test-automation.git`); added the missing Developer Preview banner to `ai-llm-security`.
+- **Tooling:** `scripts/check_links.py` (relative links and anchors), `scripts/check_public_mit.py`, release gate now verifies MIT metadata in the wheel and sdist and no longer requires the private raw inventory unless `--require-restricted-scan` is passed.
+- Accuracy numbers are unchanged (51% strict precision for the evaluated Web/API/Supply-chain rules).
+
 ## 0.3.0rc1 - Developer Preview release candidate
 - **Findings semantics:** static rule matches are *candidates*. Automatic re-execution never produces `confirmed`; `security-skills confirm` records an independent validation (validator, method, violated boundary, evidence hash) and verification rejects `confirmed` without it. Default CI gate = reproduced high-confidence candidates; `--gate confirmed` gates only validated findings. Regression generation from a candidate needs `--accept-candidate` and is labelled.
 - **Maturity labels:** every check is `preview`, `experimental` (4 AI/LLM rules) or `unimplemented` (15 dynamic/hybrid/manual checks + external adapters). Playwright/Schemathesis outputs are experimental skeletons.

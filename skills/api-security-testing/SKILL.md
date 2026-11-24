@@ -1,10 +1,10 @@
 ---
 name: api-security-testing
 description: "Reviews REST, GraphQL, gRPC and SOAP APIs for OWASP API Top 10 risks: object and function level authorization, authentication and JWT/OAuth handling, mass assignment, resource limits by configuration, SSRF, inventory and unsafe consumption, from specs and code offline, with optional authorized lab tests. Use when the project has an OpenAPI/GraphQL/proto spec or route handlers, or the user asks for an API security review. Not for: browser UI issues (web-security-testing), live probing without written scope, fuzzing or load tests, credential attacks."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -71,7 +71,7 @@ Evaluate API contracts and implementations for authorization, authentication and
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

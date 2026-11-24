@@ -1,16 +1,23 @@
 [project]
 name = "security-test-automation"
-version = "0.3.0rc1"
-description = "Developer Preview: offline-by-default static security audit runner and Agent Skills for coding agents"
+version = "0.3.1.dev0"
+description = "Developer Preview: Agent Skills and an offline-first static security audit runner for application development"
 requires-python = ">=3.10"
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT"
 license-files = ["LICENSE", "NOTICE"]
-classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Topic :: Security"]
+keywords = ["security", "agent-skills", "appsec", "static-analysis", "sarif", "devsecops"]
+classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Topic :: Security", "Programming Language :: Python :: 3"]
+
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "jsonschema>=4"]
+dev = ["pytest>=8", "jsonschema>=4", "build>=1"]
+
+[project.urls]
+Homepage = "https://github.com/shikari00007/security-test-automation"
+Issues = "https://github.com/shikari00007/security-test-automation/issues"
+Source = "https://github.com/shikari00007/security-test-automation"
 
 [project.scripts]
 security-skills = "security_runner.cli:main"

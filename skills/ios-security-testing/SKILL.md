@@ -1,10 +1,10 @@
 ---
 name: ios-security-testing
 description: "Reviews iOS apps (Xcode projects, Info.plist, entitlements, source, IPA metadata) for ATS exceptions, URL scheme and universal link handling, Keychain and storage use, WebView misuse, entitlement risks and transport security aligned to OWASP MASVS, offline first, simulator tests only under written scope. Use when the project has an .xcodeproj, Info.plist, entitlements or an IPA. Not for: Android, back-end APIs (api-security-testing), jailbreak or device instrumentation without authorization, App Store circumvention, credential attacks."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -69,7 +69,7 @@ Evaluate iOS configuration and source statically; keep simulator, LLDB and devic
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

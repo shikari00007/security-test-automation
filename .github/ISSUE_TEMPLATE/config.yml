@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability in this framework (private)
+    url: https://github.com/shikari00007/security-test-automation/security/advisories/new
+    about: Please do not open a public issue for security vulnerabilities.

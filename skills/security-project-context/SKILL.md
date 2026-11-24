@@ -1,10 +1,10 @@
 ---
 name: security-project-context
 description: "Captures and maintains the facts a security review depends on: app type and stack, trust boundaries, auth model, data classes, environments, test accounts (never secrets), ignore paths and authorization scope, in one reviewable context record. Use when a review needs shared assumptions, before planning checks, or when scope or architecture changed. Not for: executing tests (security-do), choosing checks (security-test-strategy), or storing credentials of any kind."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -67,7 +67,7 @@ Produce a small context record that every other security skill reads, so assumpt
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 Without the CLI:
 

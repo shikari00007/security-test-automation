@@ -1,10 +1,10 @@
 ---
 name: android-security-testing
 description: "Reviews Android apps (source, manifest, APK metadata) for exported components, backup and debug flags, cleartext traffic, insecure storage, WebView misuse, deep links, crypto and network pinning issues aligned to OWASP MASVS, offline first, with emulator tests only under written scope. Use when the project has AndroidManifest.xml, Gradle Android modules or an APK. Not for: iOS, web back ends (api-security-testing), rooted-device instrumentation without authorization, malware analysis, store-fraud or credential attacks."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -69,7 +69,7 @@ Evaluate Android artifacts statically; propose emulator and instrumentation step
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

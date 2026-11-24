@@ -1,10 +1,10 @@
 ---
 name: security-reporting
 description: "Produces honest security reports from validated results in Markdown, JSON, SARIF and JUnit: coverage first, findings with redacted re-derivable evidence, verdicts, blocked and untested checks, remediation and limitations. Use when an audit finished and results must be summarized for developers, CI or reviewers. Not for: running tests (security-do), validating findings (security-finding-validation), or asserting that an application is secure."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -68,7 +68,7 @@ Communicate what was tested, what was found, how sure we are, and what remains u
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 

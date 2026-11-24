@@ -7,3 +7,4 @@ artifacts/
 security-plan.json
 *.egg-info/
 build/
+dist/

@@ -1,4 +1,6 @@
-# Release gates - Developer Preview 0.3.0rc1
+# Release gates - Developer Preview 0.3.0rc1 (historical report)
+
+> This page records the gate results for the `v0.3.0rc1` pre-release, which was published under Apache-2.0. It is kept as a historical record; current `main` is MIT. Rerun `python scripts/release_gate.py` for current results.
 
 Automated by `python scripts/release_gate.py` (builds the public tree from an allowlist, then exercises it from clean venvs; latest report in `dist/release-gate-report.md`). Nothing has been published.
 

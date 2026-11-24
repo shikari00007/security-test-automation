@@ -58,9 +58,9 @@ def test_allowlist_excludes_restricted_material():
 def test_license_metadata():
     tomllib = pytest.importorskip("tomllib")
     meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert meta["license"] == "Apache-2.0"
+    assert meta["license"] == "MIT"
     lic = (ROOT / "LICENSE").read_text()
-    assert "Apache License" in lic and "Version 2.0" in lic and len(lic.splitlines()) > 150
+    assert lic.startswith("MIT License\n") and "Copyright (c) 2026 shikari00007" in lic and "Apache" not in lic
     third = (ROOT / "docs" / "THIRD-PARTY.md").read_text()
     for sha in ("5087a3461d49da76b1e794d9b0bfbd23f38dc75b", "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
                 "6196ba7464662de34e8744d359f175d1a7bca530"):

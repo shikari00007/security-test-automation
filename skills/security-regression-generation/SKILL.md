@@ -1,10 +1,10 @@
 ---
 name: security-regression-generation
 description: "Turns a confirmed security finding into a proposed regression test that fails on the vulnerable version and passes on the fixed one: pytest (executable in the CLI), Playwright and Schemathesis skeletons, plus manual JUnit, XCTest and Espresso guidance. Use when a finding is confirmed and needs a durable test, or a fix needs a retest. Not for: unconfirmed candidates (security-finding-validation), applying changes to application source without approval, or load and attack testing."
-license: Apache-2.0
+license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:
-  version: "0.3.0rc1"
+  version: "0.3.1.dev0"
   author: security-test-automation contributors
 ---
 
@@ -73,7 +73,7 @@ Create a negative test that asserts the secure behavior and prove it red then gr
 
 ## Optional CLI and no-CLI fallback
 
-Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation` (this is the intended install location; the package is not yet published, so the install may fail until it is - the manual fallback below always works).
+Optional runner: `pip install git+https://github.com/shikari00007/security-test-automation.git` (installed from GitHub; it is not on PyPI). The manual fallback below always works without it.
 
 If `security-skills` is available:
 
