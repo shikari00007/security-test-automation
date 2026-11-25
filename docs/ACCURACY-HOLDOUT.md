@@ -36,9 +36,9 @@ Set 2 (unseen): getredash/redash f561a53, TryGhost/Ghost e6e3a5b, netbox-communi
 These repositories were read statically and never executed. Per-change details and recall risks: `docs/RULE-ACCURACY-FIELD-*.md`.
 
 ---
-# Second rework round, measured on hold-out set 3
+# Hold-out set 3: the full rework (both rounds) against the original rules
 
-A further rework (PHP/Java precision, Python and TypeScript/JavaScript taint detection, SEC-SC-006 generalisation) was measured on a third set of 23 public repositories that none of the rule authors had read: 13 realistic PHP, Java, Python and TypeScript projects for precision and 10 deliberately vulnerable apps for recall (73 independently identified known-vulnerable locations). Method as above; the sample was 108 findings before and 105 after (31 of the "after" labels reused from identical "before" findings).
+The complete rework (round 1 plus the PHP/Java precision, Python and TypeScript/JavaScript taint detection and SEC-SC-006 generalisation of round 2) was measured on a third set of 23 public repositories that none of the rule authors had read. **"Before" is the original pre-rework rule set (the code of the first public release line), so the table shows the cumulative effect of both rounds, not the second round alone.** 13 realistic PHP, Java, Python and TypeScript projects for precision and 10 deliberately vulnerable apps for recall (73 independently identified known-vulnerable locations). Method as above; the sample was 108 findings before and 105 after (31 of the "after" labels reused from identical "before" findings).
 
 | Measure | Before | After |
 |---|---|---|
@@ -53,3 +53,19 @@ A further rework (PHP/Java precision, Python and TypeScript/JavaScript taint det
 Reading: SEC-SC-006 precision and PHP/JavaScript recall improved. **Python recall barely generalised** (the Python detectors recovered 18 of 19 known locations on the repositories used to build them, but only 8 of 28 on the unseen set), Java recall did not change, SEC-SC-001 recall stayed at zero, SEC-SC-006 recall dipped by one location, and no sampled finding in realistic code was shown to be exploitable. WEB-005 (21 findings) and SC-001 samples are small.
 
 Set 3 repositories (pinned commits). Realistic: ansible/ansible cd313f0, symfony/demo f42980c, excalidraw/excalidraw 5681e7d, laravel/framework 321caf7, jenkinsci/jenkins 3209f9a, keycloak/keycloak 549623e1, matomo-org/matomo 53047c4, mitmproxy/mitmproxy 0466185, n8n-io/n8n afd87867, outline/outline 8e7b1fa, spring-projects/spring-boot ebb5e11c, sqlalchemy/sqlalchemy 9c88919, WordPress/WordPress 0761560. Vulnerable: dolevf/Damn-Vulnerable-GraphQL-Application a961308, snyk-labs/nodejs-goof add14ba, Audi-1/sqli-labs e96f217, payatu/Tiredful-API 0134124, erev0s/VAmPI f16052d, SasanLabs/VulnerableApp c44987a, Contrast-Security-OSS/vulnpy b81885e, fportantier/vulpy 5249cc8, OWASP/wrongsecrets 692b475, s4n7h0/xvwa fb30fa5.
+
+---
+# Hold-out set 4 (OWASP Benchmark and hand-curated apps): recall gained, false positives on benign look-alikes rose
+
+A fourth set (14 repositories: realistic Python/Java projects, five hand-curated vulnerable apps, and the OWASP Benchmark for Java and Python) adds a direct false-positive measure: the Benchmark marks each test case as really vulnerable or as a designed benign look-alike (260 vulnerable and 210 benign locations were scored; hand-curated entries are all vulnerable).
+
+| Measure (rules SEC-WEB-002/005/006 and SEC-SC-006) | Original rules | This pull request's rules |
+|---|---|---|
+| Recall of known-vulnerable locations | 19% (50 of 260) | 33% (85 of 260) |
+| Benign look-alikes wrongly flagged | 15% (31 of 210) | 27% (56 of 210) |
+| ...Java SQL (SEC-WEB-006) | 78% (31 of 40) | 90% (36 of 40) |
+| ...Python command injection (SEC-WEB-005) | 0% (0 of 40) | 40% (16 of 40) |
+| Recall, OWASP Benchmark Python / Java | 1/69, 34/119 | 14/69, 49/119 |
+
+So the rework found more of the vulnerable code, but it also **flags more of the deliberately benign cases**, most of all in Java SQL and Python command execution. The Benchmark is a synthetic worst case for pattern-based tools (its flows are routed through helper methods and dead branches), so these figures are not a prediction for ordinary code, but the direction is a real cost. Pattern precision on the realistic repositories of this set was 90% (53 of 59 sampled findings genuine patterns) for the original rules; it was not re-sampled for the new rules.
+
