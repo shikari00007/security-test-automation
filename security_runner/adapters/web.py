@@ -10,6 +10,7 @@ import re
 from bisect import bisect_right
 
 from . import web_php_java as _pj
+from . import web_python_ts as _pt
 from .base import Observation, RuleResult, ScanContext, rule
 
 # --------------------------------------------------------------------------------------
@@ -1190,6 +1191,70 @@ def php_java_obs(ctx: ScanContext, rule_id: str, files: list[str], skip: "dict[s
     return obs
 
 
+_PT_JS_GLOBS = ["*.js", "*.jsx", "*.ts", "*.tsx", "*.mjs", "*.cjs"]
+_PT_TEMPLATE_GLOBS = ["*.html", "*.htm", "*.jinja", "*.jinja2", "*.j2", "*.tmpl"]
+
+
+def _pt_cache(ctx: ScanContext) -> dict:
+    c = getattr(ctx, "_pyts_cache", None)
+    if c is None:
+        c = ctx._pyts_cache = {}    # type: ignore[attr-defined]
+    return c
+
+
+def py_ts_obs(ctx: ScanContext, rule_id: str, skip: "dict[str, set[int]] | None" = None, ci_skip: bool = False) -> list[Observation]:
+    """Request-taint based Python / TypeScript / JavaScript findings (see web_python_ts), minus lines another
+    detector already reported (or whose construction lines it already reported)."""
+    cache = _pt_cache(ctx)
+    obs: list[Observation] = []
+    files = non_test(sel(ctx, *PY_GLOBS, *_PT_JS_GLOBS))
+    for rel in files:
+        if ci_skip and _CI_PATH.search(rel):
+            continue
+        key = ("a", rel)
+        if key not in cache:
+            text = ctx.read(rel)
+            cache[key] = _pt.analyze_py(text) if rel.endswith(".py") else _pt.analyze_js(text, rel)
+        seen = (skip or {}).get(rel, set())
+        for line, detail, via in cache[key][rule_id]:
+            if line in seen or any(l in seen for a, b in via for l in range(a, b + 1)):
+                continue
+            obs.append(Observation(rel, line, detail))
+    if rule_id == "SEC-WEB-002":
+        obs += _pt_template_obs(ctx, cache, skip)
+    return obs
+
+
+def _pt_template_obs(ctx: ScanContext, cache: dict, skip) -> list[Observation]:
+    tmpl = non_test(sel(ctx, *_PT_TEMPLATE_GLOBS))
+    if not tmpl:
+        return []
+    if "keys" not in cache:
+        keys: set = set()
+        for rel in non_test(sel(ctx, *PY_GLOBS)):
+            text = ctx.read(rel)
+            if "render" in text or "TemplateResponse" in text:
+                keys |= _pt.view_context_keys(text)
+        cache["keys"] = keys
+    obs = []
+    for rel in tmpl:
+        text = ctx.read(rel)
+        if "|safe" not in text and "[innerHTML]" not in text and "[outerHTML]" not in text:
+            continue
+        sib = ""
+        if rel.endswith(".component.html"):
+            ts = rel[:-5] + ".ts"
+            try:
+                sib = ctx.read(ts)
+            except PermissionError:
+                sib = ""
+        seen = (skip or {}).get(rel, set())
+        for line, detail in _pt.analyze_template(text, rel, sib, cache["keys"]):
+            if line not in seen:
+                obs.append(Observation(rel, line, detail))
+    return obs
+
+
 _EJS_SAFE = re.compile(r"^\s*(?:include|partial|layout|body|content|contentFor|yield|block|style|script|stylesheet|"
                        r"title|meta|_?csrf\w*)\b|\b(?:include|partial|render)\s*\(", re.I)
 
@@ -1198,7 +1263,7 @@ _EJS_SAFE = re.compile(r"^\s*(?:include|partial|layout|body|content|contentFor|y
 def web_002(ctx: ScanContext):
     files = non_test(sel(ctx, *JS_GLOBS, "*.ejs"))
     pj = non_test(sel(ctx, *PHP_JAVA_GLOBS))
-    if not files and not pj:
+    if not files and not pj and not sel(ctx, *PY_GLOBS):
         return None
     obs: list[Observation] = php_java_obs(ctx, "SEC-WEB-002", pj)
     inner = re.compile(r"\.(?:innerHTML|outerHTML)\s*\+?=(?!=)\s*(.*)$")
@@ -1252,6 +1317,10 @@ def web_002(ctx: ScanContext):
                             continue
                         obs.append(Observation(rel, i, "EJS unescaped output <%- %> of a non-literal expression"))
                         break
+    sk: dict[str, set[int]] = {}
+    for o in obs:
+        sk.setdefault(o.file, set()).add(o.line)
+    obs += py_ts_obs(ctx, "SEC-WEB-002", sk)
     return result(obs)
 
 
@@ -1435,6 +1504,10 @@ def web_005(ctx: ScanContext):
             if not is_literal(fa) and _untrusted_expr(fa, _PY_DYN) \
                     and not py_const(rel, line_of(text, m.start()), ("eval", "exec"), False, first):
                 obs.append(Observation(rel, line_of(text, m.start()), "eval/exec with non-literal argument"))
+    sk: dict[str, set[int]] = {}
+    for o in obs:
+        sk.setdefault(o.file, set()).add(o.line)
+    obs += py_ts_obs(ctx, "SEC-WEB-005", sk, ci_skip=True)
     return result(obs)
 
 
@@ -1499,13 +1572,16 @@ def web_006(ctx: ScanContext):
             flow = py_flow(ctx, rel, flows)
             return not (flow and flow.sql_safe(i + 1))
         # PHP: "..." . $var concatenation / "$var" interpolation
-        return rel.endswith(".php") and bool(re.search(r"[\"']\s*\.\s*\$\w|\"[^\"]*\$\w+", line))
+        # identifier-only interpolation (table-name helpers, `{$this->table}`) is not injectable: see web_php_java.php_line_dynamic
+        return (rel.endswith(".php") and bool(re.search(r"[\"']\s*\.\s*\$\w|\"[^\"]*\$\w+", line))
+                and _pj.php_line_dynamic(line, ctx.read(rel)))
     obs = scan_lines(ctx, files, _SQL_KW, check=chk,
                      detail="SQL statement built with string concatenation/interpolation")
     seen: dict[str, set[int]] = {}
     for o in obs:
         seen.setdefault(o.file, set()).add(o.line)
     obs += php_java_obs(ctx, "SEC-WEB-006", [f for f in files if _pj.kind_of(f)], seen)
+    obs += py_ts_obs(ctx, "SEC-WEB-006", seen)
     return result(obs)
 
 

@@ -1,0 +1,829 @@
+{
+ "cases": [
+  {
+   "id": "pj3-002-neg-php-cmp-ternary",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "request value only appears in a === condition; output is a fixed literal",
+   "files": {
+    "a.php": "<?php\n$mode = $_GET['mode'] === 'edit' ? 'Editing' : 'Viewing';\necho $mode;\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-cmp-bool",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "loose comparison yields a boolean",
+   "files": {
+    "a.php": "<?php\n$agreed = $_POST['agree'] == 'yes';\necho $agreed ? 'Thanks' : 'Please agree';\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-java-cmp-null",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "null test of the parameter, literal printed",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    PrintWriter out = response.getWriter();\n    out.println(request.getParameter(\"q\") == null ? \"none\" : \"some\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-java-cmp-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "null-guard plus Encode on the value",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String prefix = request.getParameter(\"p\");\n    PrintWriter out = response.getWriter();\n    out.println(\"<b>\" + (prefix == null ? \"\" : Encode.forHtml(prefix)) + \"</b>\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-php-cmp-branch",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "comparison in the condition but the raw value is echoed in the branch",
+   "files": {
+    "a.php": "<?php\necho $_GET['m'] === 'x' ? $_GET['m'] : 'd';\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-php-cmp-then-echo",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "value compared and then echoed unescaped",
+   "files": {
+    "a.php": "<?php\n$v = $_GET['q'];\nif ($v === 'a') { $n = 1; }\necho $v;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-java-cmp-then-print",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "null-guarded but unencoded output",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String p = request.getParameter(\"p\");\n    PrintWriter out = response.getWriter();\n    out.println(p == null ? \"\" : p);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pj3-005-neg-php-config-cmd",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "command line read from application configuration",
+   "files": {
+    "a.php": "<?php\nfunction save($user) {\n  $cmd = $this->config->get('password_cmd');\n  $h = popen($cmd, 'w');\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-env-args",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "arguments come from the environment, user value is shell-escaped",
+   "files": {
+    "a.php": "<?php\nfunction run($name) {\n  $args = getenv('TOOL_ARGS');\n  $who = escapeshellarg($name);\n  system(\"tool {$args} {$who}\");\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-escaped-built",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "command assembled only from escapeshellarg-wrapped values and a config value",
+   "files": {
+    "a.php": "<?php\nfunction run($file) {\n  $bin = Config::get('bin_path');\n  $cmd = $bin . ' --in ' . escapeshellarg($file);\n  shell_exec($cmd);\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-pos-php-request-cmd",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "command taken straight from the request",
+   "files": {
+    "a.php": "<?php\n$cmd = $_GET['c'];\npopen($cmd, 'r');\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-005-pos-php-param-cmd",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "command parameter of unknown origin run through the shell",
+   "files": {
+    "a.php": "<?php\nfunction run($cmd) {\n  system($cmd);\n}\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-005-pos-php-config-plus-input",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "config binary but request-derived argument appended",
+   "files": {
+    "a.php": "<?php\nfunction run() {\n  $cmd = Config::get('bin') . ' ' . $_POST['file'];\n  shell_exec($cmd);\n}\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-php-Q-helper",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "framework HTML-escape helper rcube::Q",
+   "files": {
+    "a.php": "<?php\n$u = $_GET['_url'];\necho '<a href=\"' . rcube::Q($u) . '\">go</a>';\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-check-plain",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "Drupal-style check_plain",
+   "files": {
+    "a.php": "<?php\necho '<p>' . check_plain($_GET['msg']) . '</p>';\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-xss-filter",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "Xss::filter wrapper",
+   "files": {
+    "a.php": "<?php\nprint Xss::filter($_POST['bio']);\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-php-lookalike",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "unknown formatter does not escape",
+   "files": {
+    "a.php": "<?php\necho format_text($_GET['msg']);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-php-raw-echo",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "plain reflected echo",
+   "files": {
+    "a.php": "<?php\n$u = $_GET['_url'];\necho '<a href=\"' . $u . '\">go</a>';\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-php-input-int",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "framework getter with int filter",
+   "files": {
+    "a.php": "<?php\n$id = $this->input->get('id', 0, 'int');\necho \"<p>Item $id</p>\";\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-input-cmd",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "framework getter with cmd filter (charset restricted)",
+   "files": {
+    "a.php": "<?php\necho $this->input->get('layout', 'edit', 'cmd');\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-input-uint",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "uint filter",
+   "files": {
+    "a.php": "<?php\n$n = $this->input->get('page', 1, 'uint');\necho $n;\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-php-input-string",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "string filter does not make output HTML-safe",
+   "files": {
+    "a.php": "<?php\necho $this->input->get('q', '', 'string');\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-php-input-nofilter",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "no filter argument",
+   "files": {
+    "a.php": "<?php\n$q = $this->input->get('q');\necho $q;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-java-json-ct",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSON response body",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String q = request.getParameter(\"q\");\n    response.setContentType(\"application/json\");\n    response.getWriter().write(q);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-java-plain-ct",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "text/plain response",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {\n    String q = req.getParameter(\"q\");\n    resp.setContentType(\"text/plain; charset=utf-8\");\n    PrintWriter out = resp.getWriter();\n    out.println(\"echo: \" + q);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-java-json-serializer",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "serialised through a JSON mapper",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    Object payload = lookup(request.getParameter(\"id\"));\n    response.getWriter().write(MAPPER.writeValueAsString(payload));\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-java-html-ct",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "HTML content type, unescaped reflection",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String q = request.getParameter(\"q\");\n    response.setContentType(\"text/html\");\n    response.getWriter().write(\"<p>\" + q + \"</p>\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-java-json-then-html",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "a later method reflects into HTML (content type state is per method)",
+   "files": {
+    "A.java": "class A {\n  void api(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    response.setContentType(\"application/json\");\n  }\n  void page(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String q = request.getParameter(\"q\");\n    response.getWriter().write(\"<p>\" + q + \"</p>\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-neg-java-col-names",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "column / table identifiers from configured fields, value bound",
+   "files": {
+    "A.java": "class A {\n  private String sessionIdCol; private String sessionTable;\n  int size(Connection c) throws SQLException {\n    String sizeSql = \"SELECT COUNT(\" + sessionIdCol + \") FROM \" + sessionTable + \" WHERE app = ?\";\n    try (PreparedStatement ps = c.prepareStatement(sizeSql)) { return ps.executeQuery().getInt(1); }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-sb-cols",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "StringBuilder assembled from table and *Col identifiers, bound value",
+   "files": {
+    "A.java": "class A {\n  void del(Connection c, String id) throws SQLException {\n    StringBuilder sb = new StringBuilder(\"DELETE FROM \");\n    sb.append(roleTable);\n    sb.append(\" WHERE \");\n    sb.append(roleNameCol);\n    sb.append(\" = ?\");\n    try (PreparedStatement ps = c.prepareStatement(sb.toString())) { ps.setString(1, id); ps.executeUpdate(); }\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-snake-col",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "snake_case col identifiers",
+   "files": {
+    "A.java": "class A {\n  ResultSet load(Statement st) throws SQLException {\n    String q = \"SELECT \" + id_col + \", \" + data_col + \" FROM sessions WHERE app = 1\";\n    return st.executeQuery(q);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-pos-java-col-and-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "identifier is fine but the value is concatenated from the request",
+   "files": {
+    "A.java": "class A {\n  ResultSet f(HttpServletRequest request, Statement st) throws SQLException {\n    String q = \"SELECT \" + idCol + \" FROM t WHERE name = '\" + request.getParameter(\"n\") + \"'\";\n    return st.executeQuery(q);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-pos-java-plain-name",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "unrelated name concatenated into a query",
+   "files": {
+    "A.java": "class A {\n  ResultSet f(Statement st, String protocol) throws SQLException {\n    return st.executeQuery(\"SELECT * FROM t WHERE proto = '\" + protocol + \"'\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-java-htmlfilter",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "project HTMLFilter.filter helper",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    PrintWriter out = response.getWriter();\n    String first = request.getParameter(\"first\");\n    out.println(\" = \" + HTMLFilter.filter(first) + \"<br>\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-jsp-htmlfilter",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSP expression through util.HTMLFilter.filter",
+   "files": {
+    "a.jsp": "<p>URI: <%= util.HTMLFilter.filter(request.getRequestURI()) %></p>\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-jsp-escape-class",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSP expression through Escape.htmlElementContent",
+   "files": {
+    "a.jsp": "<p>(<%=Escape.htmlElementContent((String) request.getAttribute(\"jakarta.servlet.error.request_uri\"))%>)</p>\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-java-lookalike-filter",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "a generic list filter is not an HTML escaper",
+   "files": {
+    "A.java": "class A {\n  void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    PrintWriter out = response.getWriter();\n    out.println(Rows.filter(request.getParameter(\"first\")));\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-jsp-raw",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "JSP expression reflecting a request parameter",
+   "files": {
+    "a.jsp": "<p>Hi <%= request.getParameter(\"n\") %></p>\n"
+   },
+   "expect": [
+    [
+     "a.jsp",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-java-attr-object",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "request attribute cast to an application object type",
+   "files": {
+    "A.java": "class A {\n  void f(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    Session cur = (Session) request.getAttribute(\"currentSession\");\n    PrintWriter out = response.getWriter();\n    out.println(helper.describe(cur));\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-jsp-attr-collection",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "generic collection stored by the controller",
+   "files": {
+    "a.jsp": "<%\n Collection<Session> all = (Collection<Session>) request.getAttribute(\"activeSessions\");\n%>\n<%= JspHelper.formatNumber(all.size()) %> sessions\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-jsp-attr-long",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "numeric attribute cast",
+   "files": {
+    "a.jsp": "<p><%= (Long) request.getAttribute(\"count\") %></p>\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-java-attr-string",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "String attribute printed raw",
+   "files": {
+    "A.java": "class A {\n  void f(HttpServletRequest request, HttpServletResponse response) throws IOException {\n    String n = (String) request.getAttribute(\"name\");\n    PrintWriter out = response.getWriter();\n    out.println(n);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-jsp-attr-uncast",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "uncast attribute printed raw",
+   "files": {
+    "a.jsp": "<p><% out.print(request.getAttribute(\"servletName\").toString()); %></p>\n"
+   },
+   "expect": [
+    [
+     "a.jsp",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-jsp-line-alignment",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "reported line equals the real line after several scriptlets",
+   "files": {
+    "a.jsp": "<html>\n<% String a = request.getParameter(\"a\"); %>\n<% int k = 1; %>\n<p>x</p>\n<%\n  String b = request.getParameter(\"b\");\n%>\n<% out.println(b); %>\n"
+   },
+   "expect": [
+    [
+     "a.jsp",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-jsp-comment-scriptlet",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "a // comment in one scriptlet does not hide the next scriptlet on the same line",
+   "files": {
+    "a.jsp": "<% String a = request.getParameter(\"a\"); // read %><% out.println(a); %>\n"
+   },
+   "expect": [
+    [
+     "a.jsp",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-neg-jsp-encoded-after-scriptlets",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "encoded output after several scriptlets",
+   "files": {
+    "a.jsp": "<% String a = request.getParameter(\"a\"); %>\n<% int k = 1; %>\n<p><%= Encode.forHtml(a) %></p>\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-html-widget",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "html_* form widget escapes its value",
+   "files": {
+    "a.php": "<?php\n$f = new html_inputfield(['name' => 'host']);\necho $f->show($_POST['_host'] ?? '');\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-html-select-widget",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "HtmlSelect widget object",
+   "files": {
+    "a.php": "<?php\n$sel = new HtmlSelectField(['name' => 'db']);\n$sel->add('MySQL', 'mysql');\necho $sel->render($_POST['_db'] ?? 'mysql');\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-json-response",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSON response object serialises the value",
+   "files": {
+    "a.php": "<?php\n$id = $this->input->get('eid');\necho new JsonResponse($model->load($id));\n"
+   }
+  },
+  {
+   "id": "pj3-002-pos-php-unknown-object",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "object of an unrelated class is not assumed to escape",
+   "files": {
+    "a.php": "<?php\n$g = new Greeter();\necho $g->show($_POST['_name']);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-002-pos-php-widget-raw-echo",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "raw echo next to a widget object",
+   "files": {
+    "a.php": "<?php\n$f = new html_inputfield(['name' => 'host']);\necho $_POST['_host'];\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-neg-php-hash-wrapper",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "value hashed before reaching a command",
+   "files": {
+    "a.php": "<?php\nfunction run() {\n  $h = $this->getHashedPassword($_POST['pw']);\n  system('mkpasswd ' . $h);\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-config-vars-chain",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "command assembled from variables that were all read from configuration",
+   "files": {
+    "a.php": "<?php\nfunction save() {\n  $rc = rcmail::get_instance();\n  $bin = $rc->config->get('bin');\n  $script = $rc->config->get('script');\n  $cmd = $bin . ' -f ' . $script;\n  $h = popen($cmd, 'w');\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-array-map-escape",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "each argument escaped through array_map('escapeshellarg')",
+   "files": {
+    "a.php": "<?php\nfunction fire(array $command) {\n  $cmd = implode(' ', array_map('escapeshellarg', $command)) . ' >/dev/null 2>&1 &';\n  proc_open($cmd, [], $pipes);\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-cli-script",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "CLI build script (shebang, argv) running its own $command helper",
+   "files": {
+    "build.php": "#!/usr/bin/env php\n<?php\nfunction run(string $command): void {\n  exec($command, $out, $status);\n}\nrun('git status ' . $argv[1]);\n"
+   }
+  },
+  {
+   "id": "pj3-005-neg-php-console-command",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "console Command class with internal exec helper",
+   "files": {
+    "a.php": "<?php\nuse Symfony\\Component\\Console\\Command\\Command;\nclass G extends Command {\n  protected function gitCli(string $command) {\n    return shell_exec('git ' . $command);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-005-pos-php-cli-marker-but-request",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "file mentions argv but also executes request data",
+   "files": {
+    "a.php": "<?php\n$cmd = $_GET['c'];\nif (PHP_SAPI === 'cli') { $argv = []; }\nsystem($cmd);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pj3-005-pos-php-web-helper-cmd",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "web-facing file with a request read and a $command parameter helper",
+   "files": {
+    "a.php": "<?php\nfunction runner($command) {\n  exec($command, $o);\n}\n$page = $_GET['page'];\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-005-neg-php-cli-stdin",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "maintenance script reading STDIN, $cmd helper",
+   "files": {
+    "a.php": "<?php\nfunction sh($cmd) {\n  return shell_exec($cmd);\n}\n$line = trim(fgets(STDIN));\nsh('echo ' . escapeshellarg($line));\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-json-encode-static",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "Json::encode wrapper",
+   "files": {
+    "a.php": "<?php\necho Json::encode(['q' => $_GET['q']]);\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-json-jsonify",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "jsonify helper",
+   "files": {
+    "a.php": "<?php\nprint jsonify($_POST['payload']);\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-hash-output",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "hashed value printed",
+   "files": {
+    "a.php": "<?php\necho hash('sha256', $_POST['p']);\n"
+   }
+  },
+  {
+   "id": "pj3-002-neg-php-password-hash-output",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "password_hash output printed",
+   "files": {
+    "a.php": "<?php\n$p = password_hash($_POST['pw'], PASSWORD_DEFAULT);\necho $p;\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-props-fields",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "table / column names read once from a Properties file, values bound",
+   "files": {
+    "A.java": "class A {\n  private String m_name; private String m_member;\n  private String findSql;\n  void init(Properties props) {\n    m_name = props.getProperty(\"db.name\", \"name\");\n    m_member = props.getProperty(\"db.member\", \"member\");\n    String grp = props.getProperty(\"db.table\", \"groups\");\n    findSql = \"SELECT * FROM \" + grp + \" WHERE \" + m_name + \"=?\";\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-initparam",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "servlet init-parameter identifiers",
+   "files": {
+    "A.java": "class A extends HttpServlet {\n  private String idField;\n  public void init() {\n    idField = getInitParameter(\"idField\");\n  }\n  ResultSet find(Connection c) throws SQLException {\n    String q = \"SELECT name FROM users WHERE \" + idField + \" = ?\";\n    return c.prepareStatement(q).executeQuery();\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-value-injected",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "@Value injected field and an env-derived constant",
+   "files": {
+    "A.java": "class A {\n  @Value(\"${app.audit.table}\")\n  private String auditSource;\n  void write(JdbcTemplate jdbc) {\n    jdbc.update(\"INSERT INTO \" + auditSource + \" (msg) VALUES (?)\", \"x\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-pos-java-field-also-from-param",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "field read from config in one place but also assigned from a caller parameter",
+   "files": {
+    "A.java": "class A {\n  private String sortKey;\n  void init(Properties p) { sortKey = p.getProperty(\"sort\"); }\n  void use(String key) { sortKey = key; }\n  ResultSet find(Statement st) throws SQLException {\n    String q = \"SELECT * FROM t ORDER BY \" + sortKey;\n    return st.executeQuery(q);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-pos-java-request-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "config identifier is fine, request value concatenated",
+   "files": {
+    "A.java": "class A {\n  private String col;\n  void init(Properties p) { col = p.getProperty(\"c\"); }\n  ResultSet find(HttpServletRequest request, Statement st) throws SQLException {\n    String who = request.getParameter(\"who\");\n    return st.executeQuery(\"SELECT * FROM t WHERE \" + col + \" = '\" + who + \"'\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-neg-java-multiline-const",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "statement split over lines, every piece a literal",
+   "files": {
+    "A.java": "class A {\n  PreparedStatement p(Connection con) throws SQLException {\n    return con.prepareStatement(\n      \"select f.id, f.name from folder f, folder p \"+\n      \"where f.parentid = p.id and p.parentid is NULL\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-multiline-cols",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "continuation lines carry only *Col identifiers and literals",
+   "files": {
+    "A.java": "class A {\n  void s(Connection c) throws SQLException {\n    String sql = \"INSERT INTO \" + sessionTable + \" (\" + idCol + \", \" +\n        dataCol + \", \" + validCol +\n        \") VALUES (?, ?, ?)\";\n    c.prepareStatement(sql);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-neg-java-multiline-leading-plus",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "leading-plus style continuation with literals only",
+   "files": {
+    "A.java": "class A {\n  void s(Statement st) throws SQLException {\n    st.executeQuery(\"select a from t \"\n        + \"where b = 1 \"\n        + \"order by a\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pj3-006-pos-java-multiline-dynamic",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "dynamic value on a continuation line",
+   "files": {
+    "A.java": "class A {\n  void s(Statement st, String userInput) throws SQLException {\n    st.executeQuery(\"select a from t where b = '\" +\n        userInput +\n        \"'\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pj3-006-pos-java-multiline-leading-plus-dynamic",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "leading-plus line adds a dynamic operand",
+   "files": {
+    "A.java": "class A {\n  void s(Statement st, String name) throws SQLException {\n    String q = \"select a from t \"\n        + \"where b = '\" + name + \"'\";\n    st.executeQuery(q);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     5
+    ]
+   ]
+  }
+ ]
+}
