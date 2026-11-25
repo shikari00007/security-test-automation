@@ -28,7 +28,7 @@ INCLUDE = [
     "scripts/verify_published.sh", "scripts/check_public_mit.py", "scripts/check_links.py",
     ".github/ISSUE_TEMPLATE/*", ".github/PULL_REQUEST_TEMPLATE.md",
     "docs/VERIFICATION.md", "docs/RULE-ACCURACY.md", "docs/RULE-ACCURACY-FIELD*.md", "docs/RELEASE-GATES.md",
-    "docs/THIRD-PARTY.md", "docs/PHASE0-AUDIT.md", "docs/CATALOG.md", "docs/methodology/*.md",
+    "docs/THIRD-PARTY.md", "docs/PHASE0-AUDIT.md", "docs/CATALOG.md", "docs/ACCURACY-HOLDOUT.md", "docs/methodology/*.md",
 ]
 EXCLUDE = [
     "**/__pycache__/**", "**/*.pyc", "**/.pytest_cache/**", "**/*.egg-info/**",

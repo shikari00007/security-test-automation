@@ -1,0 +1,1171 @@
+{
+ "cases": [
+  {
+   "id": "web002-i2-neg-vhtml-icon-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "v-html fed by an icon helper called with literal args",
+   "files": {
+    "Btn.vue": "<template>\n  <span v-html=\"ui.utils.icon('x', 'sm')\"></span>\n</template>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-translate-template-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "translate() of a fully literal template string",
+   "files": {
+    "a.js": "async function f(tbody) {\n  tbody.innerHTML = await translate(`<tr><td class=\"muted\">[[admin:empty]]</td></tr>`);\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-skeleton-literal-object",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "skeleton markup helper with an object of literals",
+   "files": {
+    "a.js": "function f(h) {\n  h.innerHTML = ui.skeleton.html({\n    width: \"40%\",\n    height: \"12px\",\n  });\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-gettext-concat",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "concatenation of literal translations and literal markup",
+   "files": {
+    "a.js": "function f(el) {\n  el.innerHTML = __(\"Options\") + \"<br>\" + __(\"e.g.:\");\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-vhtml-getitem-literal-arg",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "literal argument but a reader of attacker-controllable storage is NOT a safe helper",
+   "files": {
+    "Bio.vue": "<template>\n  <div v-html=\"localStorage.getItem('bio')\"></div>\n</template>\n"
+   },
+   "expect": [
+    [
+     "Bio.vue",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-icon-dynamic-arg",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "icon helper with a non-literal argument",
+   "files": {
+    "a.js": "function f(el, name) {\n  el.innerHTML = ui.utils.icon(name);\n}\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-translate-concat-input",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "translate of a message that embeds input stays reported",
+   "files": {
+    "a.js": "function f(el, q) {\n  el.innerHTML = translate(\"Found: \" + q);\n}\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-neg-outerhtml-copy",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "copying another node's serialisation",
+   "files": {
+    "a.js": "function f(a, b) {\n  a.outerHTML = b.outerHTML;\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-outerhtml-copy-member",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "copy between member chains",
+   "files": {
+    "a.js": "function f(w) {\n  w.section.outerHTML = w.template.outerHTML;\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-innerhtml-copy-self",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "innerHTML copied from another element",
+   "files": {
+    "a.js": "function f(a, b) {\n  a.innerHTML = b.innerHTML;\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-outerhtml-input",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "outerHTML assigned from request-derived text",
+   "files": {
+    "a.js": "function f(el, html) {\n  el.outerHTML = html;\n}\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-outerhtml-concat-copy",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "copy plus attacker string is still reported",
+   "files": {
+    "a.js": "function f(a, b, extra) {\n  a.outerHTML = b.outerHTML + extra;\n}\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-neg-svelte-html-sanitized",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "{@html} of a sanitised value",
+   "files": {
+    "p/+page.svelte": "<div>{@html DOMPurify.sanitize(note.body)}</div>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-svelte-html-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "{@html} of a literal",
+   "files": {
+    "p/+page.svelte": "<div>{@html '<b>static</b>'}</div>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-svelte-text-interpolation",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "plain {expr} is auto-escaped",
+   "files": {
+    "p/+page.svelte": "<div>{note.body}</div>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-svelte-html-icon",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "{@html} of an icon helper with literal arg",
+   "files": {
+    "p/+page.svelte": "<span>{@html icon('x')}</span>\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-svelte-html-variable",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "{@html} of a message variable",
+   "files": {
+    "p/+page.svelte": "<script>\n  export let msg;\n</script>\n<span>\n  {@html msg}\n</span>\n"
+   },
+   "expect": [
+    [
+     "p/+page.svelte",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-svelte-html-member",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "{@html} of a record field",
+   "files": {
+    "p/+page.svelte": "<td>\n  {@html note.body}\n</td>\n"
+   },
+   "expect": [
+    [
+     "p/+page.svelte",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-neg-ejs-escaped-and-include",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "escaped <%= %> and partial include",
+   "files": {
+    "v/a.ejs": "<%- include(\"header\") %>\n<p><%= output.name %></p>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-ejs-layout-body",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "layout body placeholder",
+   "files": {
+    "v/layout.ejs": "<main><%- body %></main>\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-ejs-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "literal markup in unescaped tag",
+   "files": {
+    "v/a.ejs": "<%- \"<hr>\" %>\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-ejs-unescaped-field",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "unescaped output of a model field",
+   "files": {
+    "v/a.ejs": "<ul>\n  <li><%- output.searchTerm %></li>\n</ul>\n"
+   },
+   "expect": [
+    [
+     "v/a.ejs",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-ejs-unescaped-message",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "unescaped flash message",
+   "files": {
+    "v/login.ejs": "<div class=\"err\"><%- message %></div>\n"
+   },
+   "expect": [
+    [
+     "v/login.ejs",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-neg-php-htmlspecialchars",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "echo of an escaped request value",
+   "files": {
+    "a.php": "<?php\n$n = $_GET['name'];\necho \"Hello \" . htmlspecialchars($n, ENT_QUOTES);\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-php-int-cast",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "numeric cast neutralises the request value",
+   "files": {
+    "a.php": "<?php\n$id = (int)$_GET['id'];\necho \"Item \" . $id;\necho intval($_POST['n']);\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-php-sanitized-reassign",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "variable re-assigned from an escaper before output",
+   "files": {
+    "a.php": "<?php\n$q = $_GET['q'];\n$q = htmlentities($q);\necho \"<b>$q</b>\";\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-php-constant-and-db",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "constants and function-local values",
+   "files": {
+    "a.php": "<?php\nfunction show($row) {\n  $x = $row['name'];\n  echo \"<td>\" . $x . \"</td>\";\n}\necho \"Welcome\";\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-php-json-response",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSON response, not HTML",
+   "files": {
+    "a.php": "<?php\nheader(\"Content-Type: application/json\");\necho $_GET['cb'];\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-php-isset-only",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "isset() on a request value is not output",
+   "files": {
+    "a.php": "<?php\nif (isset($_GET['x'])) { echo \"set\"; }\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-php-echo-request",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "reflected request value echoed unescaped",
+   "files": {
+    "a.php": "<?php\n$name = $_GET['name'];\necho \"Hello \" . $name;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-php-html-built",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "HTML string built from request value (DVWA-style)",
+   "files": {
+    "a.php": "<?php\n$html = '';\n$html .= '<pre>Hello ' . $_GET[ 'name' ] . '</pre>';\necho $html;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-php-short-echo-tag",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "inline <?= ?> template output of a request value",
+   "files": {
+    "v.php": "<h1>Search</h1>\n<p><?= $_GET['z'] ?></p>\n"
+   },
+   "expect": [
+    [
+     "v.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-php-weak-filter",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "str_replace blacklist is not an escaper",
+   "files": {
+    "a.php": "<?php\n$name = str_replace('<script>', '', $_GET['name']);\nprint \"Hi \" . $name;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-php-self-form",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "PHP_SELF reflected into markup",
+   "files": {
+    "a.php": "<?php\n$f = '<form action=\"' . $_SERVER['PHP_SELF'] . '\">';\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-neg-java-encoded",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "writer output passed through an OWASP encoder",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, HttpServletResponse response) throws Exception {\n    String n = request.getParameter(\"n\");\n    PrintWriter out = response.getWriter();\n    out.println(\"<p>\" + Encode.forHtml(n) + \"</p>\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-java-constant-output",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "writer output of constants only",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletResponse response) throws Exception {\n    response.getWriter().println(\"<h1>Hello</h1>\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-java-numeric-param",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "request value parsed to an integer first",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, HttpServletResponse response) throws Exception {\n    int n = Integer.parseInt(request.getParameter(\"n\"));\n    response.getWriter().println(\"n=\" + n);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web002-i2-neg-jsp-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSP expression through an encoder",
+   "files": {
+    "a.jsp": "<p><%= org.owasp.encoder.Encode.forHtml(request.getParameter(\"q\")) %></p>\n"
+   }
+  },
+  {
+   "id": "web002-i2-pos-java-println-param",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "servlet echoes a request parameter",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, HttpServletResponse response) throws Exception {\n    PrintWriter out = response.getWriter();\n    out.println(\"<h1>\" + request.getParameter(\"name\") + \"</h1>\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-java-tainted-var",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "request value copied to a local then written",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, HttpServletResponse response) throws Exception {\n    String q = request.getParameter(\"q\");\n    response.getWriter().write(\"<b>\" + q + \"</b>\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web002-i2-pos-jsp-expression",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "JSP expression of a request parameter",
+   "files": {
+    "a.jsp": "<html>\n<p><%= request.getParameter(\"q\") %></p>\n</html>\n"
+   },
+   "expect": [
+    [
+     "a.jsp",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-neg-ci-helper-os-system",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "CI helper under .github is not request reachable",
+   "files": {
+    ".github/helper/roulette.py": "import os\n\ndef run_jobs(jobs=(\"build\", \"flow\")):\n    for job in jobs:\n        os.system(f'echo \"{job}=1\" >> $GITHUB_OUTPUT')\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-ci-helper-subprocess",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "CI helper subprocess with shell",
+   "files": {
+    ".github/scripts/x.py": "import subprocess\n\ndef go(name):\n    subprocess.run(f\"echo {name}\", shell=True)\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-ci-helper-js",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "CI helper JS exec",
+   "files": {
+    ".github/scripts/x.js": "const { exec } = require(\"child_process\");\nfunction go(n) { exec(`echo ${n}`); }\n"
+   }
+  },
+  {
+   "id": "web005-i2-pos-same-code-outside-ci",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "identical os.system pattern in application code is reported",
+   "files": {
+    "app/run.py": "import os\n\ndef run_jobs(job):\n    os.system(f'echo \"{job}=1\"')\n"
+   },
+   "expect": [
+    [
+     "app/run.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-ci-lookalike-dir",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "a directory merely named github is not exempt",
+   "files": {
+    "github/run.py": "import os\n\ndef run_jobs(job):\n    os.system(f'echo \"{job}\"')\n"
+   },
+   "expect": [
+    [
+     "github/run.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-neg-evaluator-literal",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "evaluator called with literal expression",
+   "files": {
+    "a.js": "const mathjs = require(\"mathjs\");\nconst r = mathjs.eval(\"1 + 2\");\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-evaluator-config",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "evaluator fed by static config, not request",
+   "files": {
+    "a.js": "const vm = require(\"vm\");\nvm.runInNewContext(CONFIG.snippet, sandbox);\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-evaluator-method-def",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "method definition named eval",
+   "files": {
+    "a.js": "class Calc {\n  eval(expr) {\n    return 1;\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web005-i2-pos-mathjs-eval-request",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "request body into math evaluator",
+   "files": {
+    "a.js": "const mathjs = require(\"mathjs\");\napp.post(\"/calc\", (req, res) => {\n  res.send(mathjs.eval(req.body.eqn));\n});\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-vm-request",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "request query into vm context",
+   "files": {
+    "a.js": "const vm = require(\"vm\");\napp.get(\"/r\", (req, res) => {\n  res.send(vm.runInNewContext(req.query.code, {}));\n});\n"
+   },
+   "expect": [
+    [
+     "a.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-neg-php-escapeshellarg",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "argument quoted with escapeshellarg",
+   "files": {
+    "a.php": "<?php\n$t = $_GET['host'];\n$safe = escapeshellarg($t);\nsystem(\"ping -c 1 \" . $safe);\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-php-constant-command",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "constant command held in a variable",
+   "files": {
+    "a.php": "<?php\nfunction g() { $cmd = 'ls -l'; system($cmd); echo shell_exec(\"uptime\"); }\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-php-int-cast",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "numeric cast before use",
+   "files": {
+    "a.php": "<?php\n$n = (int)$_GET['n'];\nexec(\"sleep \" . $n);\npassthru(\"seq \" . intval($_POST['m']));\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-php-validated",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "value validated against a strict pattern first",
+   "files": {
+    "a.php": "<?php\n$h = $_GET['h'];\nif (!preg_match('/^[a-z0-9.-]+$/', $h)) { die(); }\nshell_exec(\"dig \" . $h);\n"
+   }
+  },
+  {
+   "id": "web005-i2-pos-php-shell-exec-request",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "DVWA-style ping with request value",
+   "files": {
+    "a.php": "<?php\n$target = $_REQUEST[ 'ip' ];\n$cmd = shell_exec( 'ping  ' . $target );\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-php-eval-get",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "eval of request data",
+   "files": {
+    "a.php": "<?php\neval($_GET['code']);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-php-backtick",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "backtick shell with request value",
+   "files": {
+    "a.php": "<?php\n$d = $_POST['dir'];\n$out = `ls $d`;\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-php-system-param-named-cmd",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "helper that runs its $cmd parameter",
+   "files": {
+    "a.php": "<?php\nfunction run($cmd) {\n  system($cmd);\n}\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-php-blacklist-filter",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "str_replace blacklist does not make the command safe",
+   "files": {
+    "a.php": "<?php\n$t = $_REQUEST['ip'];\n$t = str_replace(';', '', $t);\nshell_exec('ping ' . $t);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-neg-java-argv-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "argument vector of constants",
+   "files": {
+    "A.java": "class A {\n  void m() throws Exception {\n    Runtime.getRuntime().exec(new String[]{\"ls\", \"-l\"});\n    new ProcessBuilder(\"uname\", \"-a\").start();\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-java-constant-string",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "constant command string",
+   "files": {
+    "A.java": "class A {\n  static final String CMD = \"uptime\";\n  void m() throws Exception {\n    Runtime.getRuntime().exec(CMD);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-java-parsed-number",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "numeric value parsed before concatenation",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request) throws Exception {\n    int n = Integer.parseInt(request.getParameter(\"n\"));\n    Runtime.getRuntime().exec(\"sleep \" + n);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web005-i2-neg-java-engine-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "script engine evaluating a constant",
+   "files": {
+    "A.java": "import javax.script.ScriptEngine;\nclass A {\n  void m(ScriptEngine engine) throws Exception {\n    engine.eval(\"1 + 1\");\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web005-i2-pos-java-exec-concat-param",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "Runtime.exec with request parameter concatenated",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request) throws Exception {\n    String host = request.getParameter(\"host\");\n    Runtime.getRuntime().exec(\"ping -c 1 \" + host);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-java-shell-processbuilder",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "sh -c with a concatenated command",
+   "files": {
+    "A.java": "class A {\n  void m(String dir) throws Exception {\n    new ProcessBuilder(\"sh\", \"-c\", \"ls \" + dir).start();\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web005-i2-pos-java-script-engine-eval",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "ScriptEngine.eval of a request parameter",
+   "files": {
+    "A.java": "import javax.script.ScriptEngine;\nclass A {\n  void m(HttpServletRequest request, ScriptEngine engine) throws Exception {\n    engine.eval(request.getParameter(\"expr\"));\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-neg-noqa-s608",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "author-acknowledged statement (ruff S608)",
+   "files": {
+    "a.py": "def f(db, expr):\n    sql = f\"UPDATE tasks SET beat = {expr} WHERE id = :id\"  # noqa: S608\n    db.execute(sql, {\"id\": 1})\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-nosec-b608",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "author-acknowledged statement (bandit)",
+   "files": {
+    "a.py": "def f(cur, expr):\n    cur.execute(\"SELECT * FROM t WHERE c = \" + expr)  # nosec B608\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-noqa-list",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "S608 among several codes",
+   "files": {
+    "a.py": "def f(db, expr):\n    sql = f\"DELETE FROM jobs WHERE ts < {expr}\"  # noqa: E501, S608\n    db.execute(sql)\n"
+   }
+  },
+  {
+   "id": "web006-i2-pos-noqa-other-code",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "a noqa for an unrelated code does not suppress",
+   "files": {
+    "a.py": "def f(db, uid):\n    sql = f\"UPDATE users SET seen = 1 WHERE id = {uid}\"  # noqa: E501\n    db.execute(sql)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-no-ack",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "same statement without acknowledgement",
+   "files": {
+    "a.py": "def f(db, expr):\n    sql = f\"UPDATE tasks SET beat = {expr} WHERE id = 1\"\n    db.execute(sql)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-neg-compiled-sql-format",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "wrapping an already compiled statement",
+   "files": {
+    "a.py": "def wrap(part_sql):\n    return \"SELECT * FROM ({})\".format(part_sql)\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-compiled-sql-fstring",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "derived table from a compiled-rows object",
+   "files": {
+    "a.py": "def bulk(placeholder_rows):\n    return f\"SELECT * FROM {placeholder_rows}\"\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-compiled-sql-percent",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "compiled sql + params bound separately",
+   "files": {
+    "a.py": "def mat(sql, params):\n    return RawSQL(\"SELECT * FROM (%s) subquery\" % sql, params)\n"
+   }
+  },
+  {
+   "id": "web006-i2-pos-subquery-user-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "subquery wrapper around an arbitrary value is still reported",
+   "files": {
+    "a.py": "def wrap(request_value):\n    return \"SELECT * FROM ({})\".format(request_value)\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-select-star-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "value interpolation",
+   "files": {
+    "a.py": "def f(cur, uid):\n    cur.execute(f\"SELECT * FROM users WHERE id = {uid}\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-neg-ddl-identifier-helper-from",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "identifier position fed by an identifier helper",
+   "files": {
+    "a.py": "def cp(cur, m):\n    cur.execute(f\"SELECT * FROM {get_relation_name(m)}\")\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-ddl-insert-helper-names",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "INSERT..SELECT between helper-named relations",
+   "files": {
+    "a.py": "def cp(cur, m):\n    cur.execute(f\"INSERT INTO {get_audit_name(m)} SELECT id FROM {get_relation_name(m)}\")\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-ddl-quote-helper",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "identifier through a quote helper call",
+   "files": {
+    "a.py": "def cp(cur, tbl):\n    cur.execute(f\"DELETE FROM {qn(tbl)}\")\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-ddl-context-table-vars",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "DDL context with table_name/index_name variables",
+   "files": {
+    "a.py": "def mk(cur, table_name, index_name):\n    cur.execute(f\"INSERT INTO {table_name} SELECT 1; CREATE INDEX {index_name} ON {table_name} (id)\")\n"
+   }
+  },
+  {
+   "id": "web006-i2-pos-ddl-helper-plus-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "identifier helper plus a request value in the same statement",
+   "files": {
+    "a.py": "def cp(cur, m, who):\n    cur.execute(f\"INSERT INTO {get_audit_name(m)} VALUES ('{who}')\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-ddl-context-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "a value in a DDL-context statement is not an identifier",
+   "files": {
+    "a.py": "def cp(cur, who):\n    cur.execute(f\"INSERT INTO audit_log VALUES ('{who}'); CREATE INDEX i ON audit_log (c)\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-helper-name-for-value",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "a *_name helper used in a value position stays reported",
+   "files": {
+    "a.py": "def cp(cur, req):\n    cur.execute(f\"SELECT * FROM users WHERE name = '{get_user_name(req)}'\")\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-neg-php-prepared",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "prepared statement with bound request value",
+   "files": {
+    "a.php": "<?php\n$stmt = $pdo->prepare(\"SELECT * FROM t WHERE id = ?\");\n$stmt->execute([$_GET['id']]);\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-php-int-cast-query",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "request value cast to int before concatenation",
+   "files": {
+    "a.php": "<?php\n$q = 'SELECT name FROM t WHERE id = ' . intval($_GET['id']);\nmysqli_query($c, $q);\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-php-constant-query",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "constant statement",
+   "files": {
+    "a.php": "<?php\nmysqli_query($c, \"SELECT 1\");\n$r = $db->query('SELECT COUNT(*) FROM t');\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-php-escaped-multiline",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "multi-line statement with an escaped, validated value",
+   "files": {
+    "a.php": "<?php\n$id = $_GET['id'];\nif (!ctype_digit($id)) { exit; }\n$q = \"SELECT a,\\n b\\n FROM t\\n WHERE id = \" . $id;\nmysqli_query($c, $q);\n"
+   }
+  },
+  {
+   "id": "web006-i2-pos-php-query-request-direct",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "request value concatenated at the call",
+   "files": {
+    "a.php": "<?php\nmysqli_query($conn,\n   \"DELETE\\n FROM t WHERE id = \" . $_POST['id']);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-php-pdo-query-var",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "built in a variable then passed to ->query()",
+   "files": {
+    "a.php": "<?php\n$name = $_GET['n'];\n$sql = \"SELECT *\\n FROM users\\n WHERE name = '\" . $name . \"'\";\n$res = $pdo->query($sql);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-php-mysql-query-tainted-arg",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "whole query comes from the request",
+   "files": {
+    "a.php": "<?php\n$q = $_GET['q'];\nmysql_query($q);\n"
+   },
+   "expect": [
+    [
+     "a.php",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-neg-java-prepared",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "parameterised JDBC statement",
+   "files": {
+    "A.java": "class A {\n  void m(Connection c, String name) throws Exception {\n    PreparedStatement ps = c.prepareStatement(\"SELECT * FROM t WHERE name = ?\");\n    ps.setString(1, name);\n    ps.executeQuery();\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-java-numeric-operands",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "numeric typed values and table constant in the statement",
+   "files": {
+    "A.java": "class A {\n  static final String TABLE = \"users\";\n  void m(Statement st, int id, long limit) throws Exception {\n    st.executeQuery(\"SELECT * FROM \" + TABLE + \" WHERE id = \" + id + \" LIMIT \" + limit);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-java-parsed-request",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "request value parsed to a number",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, Statement st) throws Exception {\n    int id = Integer.parseInt(request.getParameter(\"id\"));\n    st.executeQuery(\"SELECT * FROM t WHERE id = \" + id);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-java-named-params",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "HQL with named parameters",
+   "files": {
+    "A.java": "class A {\n  List<User> find(EntityManager em, String name) {\n    return em.createQuery(\"from User u where u.name = :name\").setParameter(\"name\", name).getResultList();\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-java-format-numeric",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "String.format with numeric specifiers only",
+   "files": {
+    "A.java": "class A {\n  void m(Statement st, int a, int b) throws Exception {\n    st.executeQuery(String.format(\"SELECT * FROM t WHERE a = %d AND b = %d\", a, b));\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-neg-java-executor-not-sql",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "generic execute() of a task is not SQL",
+   "files": {
+    "A.java": "class A {\n  void m(Executor ex, Runnable job) {\n    ex.execute(job);\n  }\n}\n"
+   }
+  },
+  {
+   "id": "web006-i2-pos-java-statement-concat-param",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "JDBC statement concatenating a request parameter",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, Statement st) throws Exception {\n    String id = request.getParameter(\"id\");\n    ResultSet rs = st.executeQuery(\"SELECT * FROM users WHERE id = '\" + id + \"'\");\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-java-hql-concat",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "HQL query built by concatenating a bound request parameter",
+   "files": {
+    "A.java": "class A {\n  List<User> find(@RequestParam String name, EntityManager em) {\n    return em.createQuery(\"from User u where u.name = '\" + name + \"'\").getResultList();\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-java-format-string",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "String.format with %s of a non-constant value",
+   "files": {
+    "A.java": "class A {\n  void m(Statement st, String who) throws Exception {\n    String q = String.format(\"select * from t where owner = '%s'\", who);\n    st.execute(q);\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "web006-i2-pos-java-native-query-var",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "createNativeQuery of a tainted variable",
+   "files": {
+    "A.java": "class A {\n  void m(HttpServletRequest request, EntityManager em) {\n    String sql = \"SELECT * FROM t WHERE c = \" + request.getParameter(\"c\");\n    em.createNativeQuery(sql).getResultList();\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "A.java",
+     3
+    ]
+   ]
+  }
+ ]
+}

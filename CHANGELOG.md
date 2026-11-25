@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased (0.3.1.dev0) - public mainline refresh
+## Unreleased (0.3.1.dev0) - rule accuracy rework and public mainline refresh
+- **Rule rework (SEC-SC-001/006, SEC-WEB-002/005/006):** dataflow-aware exemptions (constant and closed-set SQL fragments, literal-argument helper calls, shell/env references), locale-catalog and identifier-constant handling for SC-006, fixed a shared Python docstring-blanking bug that hid code after triple-quoted constants, and added PHP, Java, Svelte and EJS sink detection for WEB-002/005/006. 167 new accuracy cases. Confidence, profiles and severity are unchanged.
+- **Measured on fresh hold-outs:** pattern precision 66% to 82%, recall 29% to 42%, strict precision still 0% (no sampled finding shown exploitable); SEC-WEB-002 precision did not improve. See `docs/ACCURACY-HOLDOUT.md`. The README's earlier 51% figure is kept and labelled as a different, earlier measurement.
+
+## Earlier in this release line - public mainline refresh
 - **License:** current mainline relicensed from Apache-2.0 to **MIT** (Copyright (c) 2026 shikari00007). The historical `v0.3.0rc1` release remains Apache-2.0 and unchanged. Package metadata (`License-Expression: MIT`), all 16 `SKILL.md` files, `LICENSE`, `NOTICE`, `CONTRIBUTING.md` and `docs/THIRD-PARTY.md` updated.
 - **Docs:** README rewritten (install, prompts, agents, skills catalog, domains, profiles, CLI, workflow, regression testing, limitations); CONTRIBUTING expanded (setup, creating a skill, contributing a check, verification and compatibility rules); SECURITY.md now points at private vulnerability reporting; issue and PR templates added.
 - **Skills:** removed stale "not yet published" wording (the CLI installs from GitHub: `pip install git+https://github.com/shikari00007/security-test-automation.git`); added the missing Developer Preview banner to `ai-llm-security`.

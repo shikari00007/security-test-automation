@@ -67,10 +67,20 @@
           "*.tsx",
           "*.mjs",
           "*.vue",
-          "*.html"
+          "*.html",
+          "*.cjs",
+          "*.svelte",
+          "*.htm",
+          "*.ejs",
+          "*.php",
+          "*.phtml",
+          "*.inc",
+          "*.java",
+          "*.jsp",
+          "*.jspx"
         ]
       },
-      "expected_secure_behavior": "Untrusted data reaches the DOM only through text-safe APIs (textContent) or after sanitisation with a vetted library.",
+      "expected_secure_behavior": "Untrusted data reaches the DOM/HTTP response only through text-safe APIs (textContent, htmlspecialchars/Encode.forHtml, framework auto-escaping) or after sanitisation with a vetted library. Every operand of the markup (concatenation or template) must be a literal, a number, an escaped/sanitised value, a translation/icon/skeleton helper called with only literal arguments, a const bound to a literal or a lookup in a literal table; otherwise the sink is reported. PHP/Java/JSP: echo/print/response-writer output (and HTML strings) fed by request data ($_GET/$_POST/$_REQUEST/$_COOKIE, request.getParameter, annotated parameters) without an HTML-encoding call is reported; Svelte {@html} and EJS <%- %> are treated like v-html.",
       "remediation": "Use textContent/framework interpolation, or pass HTML through DOMPurify.sanitize() before innerHTML, dangerouslySetInnerHTML or v-html.",
       "review_state": "reviewed",
       "standards": {
@@ -198,10 +208,17 @@
           "*.mjs",
           "*.vue",
           "*.html",
-          "*.py"
+          "*.py",
+          "*.cjs",
+          "*.php",
+          "*.phtml",
+          "*.inc",
+          "*.java",
+          "*.jsp",
+          "*.jspx"
         ]
       },
-      "expected_secure_behavior": "Commands are executed with argument vectors (execFile, subprocess list form) and no input is passed to eval or Function.",
+      "expected_secure_behavior": "Commands are executed with argument vectors (execFile, subprocess list form, ProcessBuilder without a shell) and no input is passed to eval or Function. Command/code strings that local dataflow proves constant (literals, constants, closed literal collections, shlex.quote-d/escapeshellarg-d arguments for shell sinks) are not reported; CI helper scripts under .github/ are out of scope. PHP: eval/system/exec/shell_exec/passthru/popen/proc_open/backticks and Java: Runtime.exec/ProcessBuilder (with a shell or concatenated string), ScriptEngine.eval are reported when fed by request data or concatenated with a non-constant operand.",
       "remediation": "Use execFile/spawn or subprocess.run([...]) without a shell, validate arguments against an allowlist and remove eval/new Function.",
       "review_state": "reviewed",
       "standards": {
@@ -247,10 +264,14 @@
           "*.kt",
           "*.rb",
           "*.php",
-          "*.go"
+          "*.go",
+          "*.cjs",
+          "*.svelte",
+          "*.phtml",
+          "*.inc"
         ]
       },
-      "expected_secure_behavior": "Database queries use parameterised statements or an ORM; user input is never concatenated into SQL text.",
+      "expected_secure_behavior": "Database queries use parameterised statements or an ORM; user input is never concatenated into SQL text. Interpolated fragments are acceptable only when local dataflow proves them non-attacker-controlled (literal constants, conditionals of literals, literal-dict lookups, column names from a closed set, catalog-derived quoted identifiers, identifiers in DDL/PRAGMA/TRIGGER statements that come from a quoted/validated identifier helper, an already-compiled SQL string wrapped in a subquery with params bound separately, or a line carrying an explicit noqa S608/nosec acknowledgement); values must be bound parameters. PHP (mysql_query/mysqli_query/->query) and Java (Statement.execute*/createQuery/createNativeQuery/prepareStatement/JdbcTemplate) sinks are reported when the statement carries request-derived data or an SQL literal concatenated/String.format-ed with a non-constant, non-numeric operand.",
       "remediation": "Switch to placeholders/prepared statements (cursor.execute(sql, params), $1 bindings) and allowlist any dynamic identifiers.",
       "review_state": "reviewed",
       "standards": {
