@@ -9,6 +9,7 @@ import json
 import re
 from bisect import bisect_right
 
+from . import web_php_java as _pj
 from .base import Observation, RuleResult, ScanContext, rule
 
 # --------------------------------------------------------------------------------------
@@ -73,8 +74,16 @@ def clean(text: str, rel: str) -> str:
     style = _style(rel)
     out: list[str] = []
     block_end: str | None = None
+    tq: str | None = None   # inside a multi-line triple-quoted VALUE (`x = """..."""`), not a docstring
     for line in text.split("\n"):
         s = line.strip()
+        if tq:
+            # keep the body; the closing quote must not be mistaken for the start of a docstring, which
+            # would blank all following code until the next triple quote (recall loss)
+            out.append(line)
+            if line.count(tq) % 2 == 1:
+                tq = None
+            continue
         if block_end:
             if block_end in line:
                 block_end = None
@@ -105,6 +114,11 @@ def clean(text: str, rel: str) -> str:
             if s.startswith("*") and not s.startswith("*/") and style == "c":
                 out.append("")
                 continue
+        if style == "hash" and rel.endswith(".py"):
+            for q in ('"""', "'''"):
+                if line.count(q) % 2 == 1:
+                    tq = q
+                    break
         out.append(line)
     return "\n".join(out)
 
@@ -531,6 +545,622 @@ def web_001(ctx: ScanContext):
 
 
 # --------------------------------------------------------------------------------------
+# Constant-flow helpers shared by WEB-002 / WEB-005 / WEB-006 (phase 1 precision work)
+#
+# Principle: a dynamic fragment is only exempted when LOCAL dataflow in the same file proves it is not
+# attacker-influenced: a literal, a conditional/concatenation/join of such fragments, a lookup in a
+# literal table, a loop variable over a closed (literal / allowlist-filtered / catalog) collection, or a
+# name whose EVERY binding in scope is one of those. Anything unknown (parameters, attributes, calls,
+# imports, names never bound in the file) is treated as attacker-influenced, i.e. still reported.
+# --------------------------------------------------------------------------------------
+import ast as _ast
+import warnings as _warnings
+
+_CATALOG_CALLS = {"get_table_names", "get_columns", "get_schema_names", "get_view_names", "sorted_tables"}
+_CATALOG_SQL = re.compile(r"(?i)information_schema|pg_catalog|sqlite_master|sqlite_schema|pg_tables")
+_MODEL_ATTRS = {"model_fields", "__fields__", "__annotations__", "_fields", "__slots__", "column_attrs"}
+_STRIP_METHODS = {"strip", "lstrip", "rstrip", "lower", "upper", "title"}
+_SQL_ANY = re.compile(r"(?i)\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b")
+
+
+class _PyFlow:
+    """Conservative constant-flow analysis over a parsed Python module (see block comment above)."""
+
+    def __init__(self, tree):
+        self.tree = tree
+        self.parent = {}
+        for n in _ast.walk(tree):
+            for c in _ast.iter_child_nodes(n):
+                self.parent[c] = n
+        self._scope_cache = {}
+
+    # ---- scopes / bindings -------------------------------------------------------------
+    def _scope_of(self, node):
+        n = self.parent.get(node)
+        while n is not None and not isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.Lambda, _ast.Module)):
+            n = self.parent.get(n)
+        return n or self.tree
+
+    def _bindings(self, scope):
+        if scope in self._scope_cache:
+            return self._scope_cache[scope]
+        b: dict = {}
+
+        def add(name, *rec):
+            b.setdefault(name, []).append(rec)
+
+        def names_in(t):
+            return [x.id for x in _ast.walk(t) if isinstance(x, _ast.Name)]
+
+        if isinstance(scope, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.Lambda)):
+            a = scope.args
+            for arg in a.posonlyargs + a.args + a.kwonlyargs + [x for x in (a.vararg, a.kwarg) if x]:
+                add(arg.arg, "unknown")
+        stack = list(scope.body if not isinstance(scope, _ast.Lambda) else [scope.body])
+        while stack:
+            n = stack.pop()
+            if isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)):
+                add(n.name, "unknown")
+                continue   # nested scope: its own bindings are separate
+            if isinstance(n, _ast.Lambda):
+                continue
+            if isinstance(n, _ast.Assign):
+                for t in n.targets:
+                    if isinstance(t, _ast.Name):
+                        add(t.id, "assign", n.value)
+                    elif isinstance(t, _ast.Subscript) and isinstance(t.value, _ast.Name):
+                        add(t.value.id, "setitem", t.slice, n.value)
+                    elif isinstance(t, (_ast.Tuple, _ast.List)) and isinstance(n.value, (_ast.Tuple, _ast.List)) \
+                            and len(t.elts) == len(n.value.elts) and all(isinstance(x, _ast.Name) for x in t.elts):
+                        for x, v in zip(t.elts, n.value.elts):    # `a, b = [], []`
+                            add(x.id, "assign", v)
+                    else:
+                        for nm in names_in(t):
+                            add(nm, "unknown")
+            elif isinstance(n, _ast.AnnAssign) and isinstance(n.target, _ast.Name) and n.value is not None:
+                add(n.target.id, "assign", n.value)
+            elif isinstance(n, _ast.AugAssign) and isinstance(n.target, _ast.Name):
+                add(n.target.id, "aug", n.value)
+            elif isinstance(n, (_ast.For, _ast.AsyncFor)):
+                for nm in names_in(n.target):
+                    add(nm, "for", n.target, n.iter)
+            elif isinstance(n, _ast.withitem) and n.optional_vars is not None:
+                for nm in names_in(n.optional_vars):
+                    add(nm, "unknown")
+            elif isinstance(n, _ast.ExceptHandler) and n.name:
+                add(n.name, "unknown")
+            elif isinstance(n, (_ast.Import, _ast.ImportFrom)):
+                for al in n.names:
+                    add((al.asname or al.name).split(".")[0], "unknown")
+            elif isinstance(n, (_ast.Global, _ast.Nonlocal)):
+                for nm in n.names:
+                    add(nm, "unknown")
+            elif isinstance(n, _ast.NamedExpr):
+                add(n.target.id, "unknown")
+            elif isinstance(n, _ast.Call) and isinstance(n.func, _ast.Attribute) and isinstance(n.func.value, _ast.Name):
+                if n.func.attr in ("append", "add"):
+                    add(n.func.value.id, "item", n.args[0] if n.args else None)
+                elif n.func.attr == "extend":
+                    add(n.func.value.id, "items", n.args[0] if n.args else None)
+                elif n.func.attr == "insert":
+                    add(n.func.value.id, "item", n.args[1] if len(n.args) > 1 else None)
+                elif n.func.attr in ("update", "setdefault", "pop", "popitem", "clear", "remove"):
+                    if n.func.attr in ("update", "setdefault"):
+                        add(n.func.value.id, "unknown")
+            stack.extend(_ast.iter_child_nodes(n))
+        self._scope_cache[scope] = b
+        return b
+
+    def _lookup(self, name, node):
+        scope = self._scope_of(node)
+        while True:
+            b = self._bindings(scope)
+            if name in b:
+                return b[name], scope
+            if isinstance(scope, _ast.Module):
+                return None, scope
+            scope = self._scope_of(scope)
+
+    # ---- safe scalar/fragment values ---------------------------------------------------
+    def safe(self, node, env=None, shell=False, seen=None):
+        env = env or {}
+        seen = seen if seen is not None else set()
+        S = lambda x, e=env: self.safe(x, e, shell, seen)   # noqa: E731
+        if node is None:
+            return False
+        if isinstance(node, _ast.Constant):
+            return True
+        if isinstance(node, _ast.JoinedStr):
+            return all(S(v) for v in node.values)
+        if isinstance(node, _ast.FormattedValue):
+            return S(node.value) and (node.format_spec is None or S(node.format_spec))
+        if isinstance(node, _ast.IfExp):
+            return S(node.body) and S(node.orelse)       # the test only selects between safe fragments
+        if isinstance(node, _ast.BoolOp):
+            return all(S(v) for v in node.values)
+        if isinstance(node, _ast.BinOp):
+            if isinstance(node.op, (_ast.Add, _ast.Mult)):
+                return S(node.left) and S(node.right)
+            if isinstance(node.op, _ast.Mod):
+                r = node.right
+                return S(node.left) and (all(S(x) for x in r.elts) if isinstance(r, _ast.Tuple) else S(r))
+            return False
+        if isinstance(node, (_ast.List, _ast.Tuple, _ast.Set)):
+            return all(S(x.value if isinstance(x, _ast.Starred) else x) for x in node.elts)
+        if isinstance(node, _ast.Dict):
+            return all(k is not None for k in node.keys) and all(S(v) for v in node.values)
+        if isinstance(node, (_ast.GeneratorExp, _ast.ListComp, _ast.SetComp)):
+            e2 = self._comp_env(node.generators, env, shell, seen)
+            return e2 is not None and self.safe(node.elt, e2, shell, seen)
+        if isinstance(node, _ast.Subscript):
+            # `{"a": "col_a"}[key]` / `COLS[key]`: the result is always one of the literal values
+            return self._container_safe(node.value, env, shell, seen) or self._derived_from_closed(node.value, env, seen)
+        if isinstance(node, _ast.Attribute):
+            return self._derived_from_closed(node.value, env, seen)
+        if isinstance(node, _ast.Call):
+            f = node.func
+            if isinstance(f, _ast.Name) and f.id == "len":
+                return True
+            if isinstance(f, _ast.Name) and f.id == "str" and len(node.args) == 1:
+                return S(node.args[0])
+            if isinstance(f, _ast.Attribute):
+                if f.attr == "join" and node.args:
+                    return S(f.value) and S(node.args[0])
+                if f.attr == "format":
+                    return S(f.value) and all(S(a.value if isinstance(a, _ast.Starred) else a) for a in node.args) \
+                        and all(S(k.value) for k in node.keywords)
+                if f.attr == "get" and node.args and self._container_safe(f.value, env, shell, seen):
+                    return len(node.args) < 2 or S(node.args[1])
+                if f.attr in _STRIP_METHODS and S(f.value):
+                    return True
+                if f.attr in ("dedent", "cleandoc") and node.args:
+                    return S(node.args[0])
+                if shell and f.attr in ("quote", "join") and isinstance(f.value, _ast.Name) and f.value.id in ("shlex", "pipes"):
+                    return f.attr == "quote" or f.value.id == "shlex"   # shell-quoted arguments cannot inject
+            return self._derived_from_closed(node, env, seen)
+        if isinstance(node, _ast.Name):
+            if node.id in env:
+                return env[node.id]
+            key = (id(node), node.id)
+            b, scope = self._lookup(node.id, node)
+            if not b:
+                return False
+            k2 = (id(scope), node.id)
+            if k2 in seen:
+                return True     # self-reference (x = x + "..."): other bindings decide
+            seen = seen | {k2}
+            S2 = lambda x: self.safe(x, env, shell, seen)   # noqa: E731
+            for rec in b:
+                kind = rec[0]
+                if kind == "assign" and S2(rec[1]):
+                    continue
+                if kind == "aug" and S2(rec[1]):
+                    continue
+                if kind == "item" and S2(rec[1]):
+                    continue
+                if kind == "items" and self._elems(rec[1], "elem", env, shell, seen):
+                    continue
+                if kind == "setitem" and S2(rec[1]) and S2(rec[2]):
+                    continue
+                if kind == "for" and self._for_safe(rec[1], rec[2], env, shell, seen):
+                    continue
+                return False
+            return True
+        return False
+
+    def _container_safe(self, node, env, shell, seen):
+        """node is (or names) a literal container whose values are all safe fragments."""
+        return isinstance(node, (_ast.Dict, _ast.List, _ast.Tuple, _ast.Set, _ast.Name)) \
+            and self.safe(node, env, shell, seen)
+
+    def _derived_from_closed(self, node, env, seen):
+        """`row["name"]` / `col.name` / `f.name.lower()` where the root is a loop variable over a closed source."""
+        while isinstance(node, (_ast.Attribute, _ast.Subscript)):
+            node = node.value
+        if isinstance(node, _ast.Call) and isinstance(node.func, _ast.Attribute) and node.func.attr in _STRIP_METHODS:
+            return self._derived_from_closed(node.func.value, env, seen)
+        if not isinstance(node, _ast.Name) or node.id in env and not env[node.id]:
+            return False
+        if node.id in env:
+            return True
+        b, _ = self._lookup(node.id, node)
+        return bool(b) and all(r[0] == "for" and self._for_safe(r[1], r[2], env, False, seen) for r in b)
+
+    # ---- closed collections ------------------------------------------------------------
+    def _for_safe(self, target, it, env, shell, seen):
+        mode = "items" if isinstance(target, _ast.Tuple) and isinstance(it, _ast.Call) \
+            and isinstance(it.func, _ast.Attribute) and it.func.attr == "items" else "elem"
+        return self._elems(it, mode, env, shell, seen)
+
+    def _allow_filtered(self, gen, env, shell, seen):
+        """`for k in data if k in ALLOWED` : the loop variable is restricted to a closed allowlist."""
+        names = {x.id for x in _ast.walk(gen.target) if isinstance(x, _ast.Name)}
+        conds = []
+        for c in gen.ifs:
+            conds += c.values if isinstance(c, _ast.BoolOp) and isinstance(c.op, _ast.And) else [c]
+        for c in conds:
+            if isinstance(c, _ast.Compare) and len(c.ops) == 1 and isinstance(c.ops[0], _ast.In) \
+                    and isinstance(c.left, _ast.Name) and c.left.id in names \
+                    and self._elems(c.comparators[0], "elem", env, shell, seen):
+                return True
+        return False
+
+    def _comp_env(self, generators, env, shell, seen):
+        e2 = dict(env)
+        for g in generators:
+            ok = self._for_safe(g.target, g.iter, e2, shell, seen) or self._allow_filtered(g, e2, shell, seen)
+            for x in _ast.walk(g.target):
+                if isinstance(x, _ast.Name):
+                    e2[x.id] = ok
+        return e2
+
+    def _elems(self, node, mode, env, shell, seen):
+        """True when every element yielded by iterating ``node`` (keys / values / items per mode) is safe."""
+        E = lambda x, m=mode: self._elems(x, m, env, shell, seen)   # noqa: E731
+        Sf = lambda x: self.safe(x, env, shell, seen)   # noqa: E731
+        if isinstance(node, _ast.Dict):
+            if any(k is None for k in node.keys):
+                return False
+            return (mode == "values" or all(Sf(k) for k in node.keys)) and \
+                (mode == "elem" or mode == "keys" or all(Sf(v) for v in node.values))
+        if isinstance(node, (_ast.List, _ast.Tuple, _ast.Set)):
+            return mode in ("elem", "keys", "values") and Sf(node)
+        if isinstance(node, (_ast.ListComp, _ast.SetComp, _ast.GeneratorExp)):
+            e2 = self._comp_env(node.generators, env, shell, seen)
+            return mode in ("elem", "keys", "values") and self.safe(node.elt, e2, shell, seen)
+        if isinstance(node, _ast.DictComp):
+            e2 = self._comp_env(node.generators, env, shell, seen)
+            return (mode == "values" or self.safe(node.key, e2, shell, seen)) and \
+                (mode in ("elem", "keys") or self.safe(node.value, e2, shell, seen))
+        if isinstance(node, _ast.Name):
+            if node.id in env:
+                return env[node.id]
+            b, scope = self._lookup(node.id, node)
+            k2 = (id(scope), node.id, "e")
+            if not b or k2 in seen:
+                return bool(b)
+            seen = seen | {k2}
+            for rec in b:
+                if rec[0] == "assign" and self._elems(rec[1], mode, env, shell, seen):
+                    continue
+                if rec[0] in ("aug", "items") and self._elems(rec[1], mode, env, shell, seen):
+                    continue
+                if rec[0] == "item" and self.safe(rec[1], env, shell, seen):
+                    continue
+                if rec[0] == "setitem" and mode != "items" and self.safe(rec[1], env, shell, seen) \
+                        and (mode == "keys" or mode == "elem" or self.safe(rec[2], env, shell, seen)):
+                    continue
+                return False
+            return True
+        if isinstance(node, _ast.BinOp):
+            if isinstance(node.op, _ast.BitAnd):
+                return E(node.left) or E(node.right)      # an intersection is bounded by either side
+            if isinstance(node.op, (_ast.Add, _ast.BitOr)):
+                return E(node.left) and E(node.right)
+            if isinstance(node.op, _ast.Sub):
+                return E(node.left)
+            return False
+        if isinstance(node, _ast.Attribute):
+            if node.attr in _MODEL_ATTRS:
+                return True
+            return node.attr in ("columns", "c") and isinstance(node.value, (_ast.Attribute, _ast.Call)) and \
+                (getattr(node.value, "attr", "") in ("__table__", "__mapper__")
+                 or (isinstance(node.value, _ast.Call) and getattr(node.value.func, "id", "") == "inspect"))
+        if isinstance(node, _ast.Call):
+            f = node.func
+            fname = f.attr if isinstance(f, _ast.Attribute) else getattr(f, "id", "")
+            if fname in _CATALOG_CALLS or fname == "fields" and node.args:
+                return True
+            if fname in ("keys", "values", "items") and isinstance(f, _ast.Attribute) and not node.args:
+                return self._elems(f.value, fname if fname != "keys" else "keys", env, shell, seen)
+            if fname in ("sorted", "list", "tuple", "set", "frozenset", "reversed") and node.args:
+                return E(node.args[0])
+            if fname == "enumerate" and node.args:
+                return E(node.args[0])
+            if fname == "zip" and node.args:
+                return all(E(a) for a in node.args)
+            if fname == "range":
+                return True
+            # catalog introspection: iterating the rows of `SELECT ... FROM information_schema...`
+            consts = [c.value for c in _ast.walk(node) if isinstance(c, _ast.Constant) and isinstance(c.value, str)]
+            return bool(consts) and bool(_CATALOG_SQL.search(" ".join(consts))) and \
+                all(isinstance(c, (_ast.Constant, _ast.Call, _ast.Attribute, _ast.Name)) for c in node.args)
+        return False
+
+    # ---- call-site helpers -------------------------------------------------------------
+    def nodes_covering(self, lineno, types):
+        return [n for n in _ast.walk(self.tree) if isinstance(n, types) and hasattr(n, "lineno")
+                and n.lineno <= lineno <= (n.end_lineno or n.lineno)]
+
+    def sql_safe(self, lineno):
+        """All SQL-looking string-building expressions covering ``lineno`` are built from safe fragments."""
+        cand = [n for n in self.nodes_covering(lineno, (_ast.JoinedStr, _ast.BinOp, _ast.Call))
+                if (isinstance(n, _ast.JoinedStr) or (isinstance(n, _ast.BinOp) and isinstance(n.op, (_ast.Add, _ast.Mod)))
+                    or (isinstance(n, _ast.Call) and isinstance(n.func, _ast.Attribute) and n.func.attr == "format"))
+                and _SQL_ANY.search(" ".join(c.value for c in _ast.walk(n)
+                                             if isinstance(c, _ast.Constant) and isinstance(c.value, str)))]
+        cand = [n for n in cand if not any(self.parent.get(n) is not None and self._has_ancestor(n, o) for o in cand if o is not n)]
+        return bool(cand) and all(self.safe(n) for n in cand)
+
+    def _has_ancestor(self, n, anc):
+        p = self.parent.get(n)
+        while p is not None:
+            if p is anc:
+                return True
+            p = self.parent.get(p)
+        return False
+
+    def calls_at(self, lineno, dotted):
+        out = []
+        for n in self.nodes_covering(lineno, (_ast.Call,)):
+            if n.lineno != lineno:
+                continue
+            f, parts = n.func, []
+            while isinstance(f, _ast.Attribute):
+                parts.append(f.attr)
+                f = f.value
+            if isinstance(f, _ast.Name):
+                parts.append(f.id)
+            if ".".join(reversed(parts)) in dotted:
+                out.append(n)
+        return out
+
+
+def py_flow(ctx: ScanContext, rel: str, cache: dict):
+    """Parsed constant-flow analyser for a Python file, or None when it cannot be parsed."""
+    if rel not in cache:
+        flow = None
+        if rel.endswith(".py"):
+            try:
+                with _warnings.catch_warnings():
+                    _warnings.simplefilter("ignore")
+                    src = ctx.read(rel)
+                    flow = _PyFlow(_ast.parse(src)) if len(src) < 600_000 else None
+            except (SyntaxError, ValueError, RecursionError):
+                flow = None
+        cache[rel] = flow
+    return cache[rel]
+
+
+# ---- JavaScript: operand classification (WEB-002 / WEB-005) -------------------------------
+_JS_STR = r"""(?:'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\$]|\\.|\$(?!\{))*`)"""
+_JS_LIT_EXPR = re.compile(r"^\s*" + _JS_STR + r"(?:\s*\+\s*" + _JS_STR + r")*\s*$")
+_JS_NUM = re.compile(r"^\s*-?\d+(?:\.\d+)?\s*$")
+_JS_NUMERIC_CALL = re.compile(r"(?:^|[\s(])(?:Number|parseInt|parseFloat|Math\.\w+)\s*\(|\.(?:length|toFixed|size)\s*$|\.(?:toFixed)\s*\(")
+# known HTML escapers / sanitizers (HTML sinks only); `_SANITIZED` above covers sanitize*/DOMPurify/escapeHtml/escape()
+_JS_HTML_ESC = re.compile(r"(?<![\w$])(?:_\.escape|he\.(?:encode|escape)|encodeURI(?:Component)?|escapeAttr\w*|htmlEscape\w*|esc|"
+                          r"escapeXml|escapeHTMLAttr)\s*\(")
+# translation of a constant message id: t('key'), _('text'), i18n.t('k'), gettext('x'), $.i18n('x'), chrome.i18n.getMessage('x')
+_JS_I18N = re.compile(r"""^\s*(?:\$\.i18n|(?:[\w$]+\.)*(?:i18n\.)?(?:t|_|__|tr|gettext|ngettext|translate|getMessage))\s*\(\s*"""
+                      + _JS_STR + r"""(?:\s*,\s*""" + _JS_STR + r""")*\s*\)\s*$""")
+
+
+def split_top(expr: str, sep: str) -> list[str]:
+    """Split ``expr`` on top-level ``sep``, aware of strings, template literals and brackets."""
+    out, depth, q, cur, i = [], 0, None, [], 0
+    while i < len(expr):
+        c = expr[i]
+        if q:
+            cur.append(c)
+            if c == "\\" and i + 1 < len(expr):
+                cur.append(expr[i + 1])
+                i += 2
+                continue
+            if c == q:
+                q = None
+        elif c in "\"'`":
+            q = c
+            cur.append(c)
+        elif c in "([{":
+            depth += 1
+            cur.append(c)
+        elif c in ")]}":
+            depth -= 1
+            cur.append(c)
+        elif depth == 0 and expr.startswith(sep, i):
+            out.append("".join(cur))
+            cur = []
+            i += len(sep)
+            continue
+        else:
+            cur.append(c)
+        i += 1
+    out.append("".join(cur))
+    return out
+
+
+_JS_HELPER_NAME = re.compile(r"(?:^|\.)(?:icon|svg_?icon|get_?icon|translate|__|_|t|\$t|tr|gettext|ngettext|trans|i18n\w*|l10n\w*)$"
+                             r"|(?:^|\.)skeleton\w*(?:\.\w+)?$", re.I)
+
+
+class JsConsts:
+    """Per-file registry of names bound only to literal strings / literal tables (JS/TS)."""
+
+    def __init__(self, text: str):
+        self.text = text
+        self._memo: dict = {}
+
+    def _literal_decls(self, name: str):
+        """All declarations of ``name``: list of RHS expression texts, or None if any declaration is not literal."""
+        t, n = self.text, re.escape(name)
+        decls = list(re.finditer(r"(?<![\w$.])(?:const|let|var)\s+" + n + r"\b(?!\s*[,)])\s*(?::[^=;\n]+)?=\s*", t))
+        if not decls:
+            return None
+        # shadowing by parameters / destructuring / loop bindings makes the single declaration unreliable
+        if re.search(r"\(\s*[^()]*(?<![\w$.])" + n + r"\b[^()]*\)\s*(?:=>|\{)|(?<![\w$.])" + n + r"\s*=>|"
+                     r"(?:const|let|var)\s*[\[{][^=;]*\b" + n + r"\b[^=;]*[\]}]\s*=|\b(?:const|let|var)\s+[\w$]+\s*,\s*" + n + r"\b|"
+                     r"\bfor\s*\(\s*(?:const|let|var)\s+" + n + r"\s+(?:of|in)\b|\bcatch\s*\(\s*" + n + r"\s*\)", t):
+            return None
+        rhs_all = []
+        for m in decls:
+            tail = t[m.end():m.end() + 6000]
+            if tail.lstrip().startswith("{") or tail.lstrip().startswith("["):
+                o = m.end() + (len(tail) - len(tail.lstrip()))
+                rhs = call_span(t, o)
+            else:
+                lit = re.match(r"\s*" + _JS_STR + r"(?:\s*\+\s*" + _JS_STR + r")*", tail)
+                if not lit:
+                    return None
+                rhs = lit.group(0)
+            rhs_all.append(rhs)
+        # re-assignments (let/var) of the name anywhere else
+        if any(m for m in re.finditer(r"(?<![\w$.])" + n + r"\s*(?:[-+*/|&?]{0,2}=)(?![=>])", t)
+               if not any(d.end() - 1 <= m.end() <= d.end() + 1 or d.start() <= m.start() < d.end() for d in decls)):
+            return None
+        return rhs_all
+
+    def const_str(self, name: str) -> bool:
+        k = ("s", name)
+        if k not in self._memo:
+            d = self._literal_decls(name)
+            self._memo[k] = d is not None and all(_JS_LIT_EXPR.match(r) for r in d)
+        return self._memo[k]
+
+    def literal_table(self, name: str) -> bool:
+        """`const T = { a: '<b>', c: 'x' }` / `['a','b']` : every value is a literal string/number."""
+        k = ("t", name)
+        if k not in self._memo:
+            d = self._literal_decls(name)
+            ok = d is not None
+            for rhs in d or []:
+                body = rhs.strip()[1:-1]
+                for item in split_top(body, ","):
+                    item = item.strip()
+                    if not item:
+                        continue
+                    if rhs.strip().startswith("{"):
+                        m = re.match(r"""(?:[\w$]+|'[^']*'|"[^"]*"|\[[^\]]*\])\s*:\s*(.+)$""", item, re.S)
+                        item = m.group(1) if m else ""
+                    if not (_JS_LIT_EXPR.match(item) or _JS_NUM.match(item)):
+                        ok = False
+            self._memo[k] = ok
+        return self._memo[k]
+
+    def operand_safe(self, op: str, html: bool, depth: int = 0) -> bool:
+        """One operand of a concatenation/template is not attacker-influenced (or neutralised for an HTML sink)."""
+        o = op.strip()
+        while o.startswith("(") and o.endswith(")") and call_span(o, 0) == o:
+            o = o[1:-1].strip()
+        if o == "" or _JS_LIT_EXPR.match(o) and "${" not in o or _JS_NUM.match(o) or o in ("true", "false", "null", "undefined"):
+            return True
+        if depth > 6:
+            return False
+        if o.startswith("`"):   # template literal containing ${...}: each interpolation must be safe
+            return self.template_safe(o, html, depth + 1)
+        parts = split_top(o, "+")
+        if len(parts) > 1:
+            return all(self.operand_safe(p, html, depth + 1) for p in parts)
+        q = self._ternary(o)
+        if q:
+            return all(self.operand_safe(p, html, depth + 1) for p in q)
+        for sep in ("||", "??"):
+            bits = split_top(o, sep)
+            if len(bits) > 1:
+                return all(self.operand_safe(b, html, depth + 1) for b in bits)
+        if _JS_I18N.match(o) or self._literal_helper_call(o):
+            return True
+        if _JS_NUMERIC_CALL.search(o) and re.match(r"^(?:Number|parseInt|parseFloat|Math\.\w+)\s*\(.*\)$|^[\w$.\[\]]+\.(?:length|size)$|^[\w$.\[\]()]+\.toFixed\([^)]*\)$", o, re.S):
+            return True
+        if html and (_SANITIZED.search(o) or _JS_HTML_ESC.search(o)):
+            return True
+        if re.match(r"^[A-Za-z_$][\w$]*$", o) and self.const_str(o):
+            return True
+        m = re.match(r"^([A-Za-z_$][\w$]*)\s*(?:\[[^\]]+\]|\.[A-Za-z_$][\w$]*)$", o)
+        return bool(m) and self.literal_table(m.group(1))
+
+    @staticmethod
+    def _literal_helper_call(o: str) -> bool:
+        """`frappe.utils.icon('x', 'sm')`, `await translate('msg')`, `frappe.ui.skeleton.html({width: '40%'})`: a
+        render/translation/icon helper whose arguments are ALL literals returns constant markup. Only helper
+        families that cannot read request data qualify (reader-style names such as getItem/get/val stay unsafe)."""
+        s = re.sub(r"^await\s+", "", o.strip())
+        m = re.match(r"^((?:[A-Za-z_$][\w$]*\.)*[A-Za-z_$][\w$]*)\s*\(", s)
+        if not m:
+            return False
+        name = m.group(1)
+        if not _JS_HELPER_NAME.search(name):
+            return False
+        span = call_span(s, m.end() - 1)
+        if s[m.end() - 1:] != span:
+            return False
+        for a in split_top(span[1:-1], ","):
+            a = a.strip()
+            if not a:
+                continue
+            if a.startswith("{") and a.endswith("}"):
+                for item in split_top(a[1:-1], ","):
+                    mm = re.match(r"""^\s*(?:[\w$]+|'[^']*'|"[^"]*")\s*:\s*(.+)$""", item.strip(), re.S)
+                    if item.strip() and not (mm and (_JS_LIT_EXPR.match(mm.group(1)) or _JS_NUM.match(mm.group(1))
+                                                     or mm.group(1).strip() in ("true", "false", "null"))):
+                        return False
+            elif not (_JS_LIT_EXPR.match(a) or _JS_NUM.match(a) or a in ("true", "false", "null")):
+                return False
+        return True
+
+    @staticmethod
+    def _ternary(o: str):
+        depth, q, i, qi = 0, None, 0, -1
+        while i < len(o):
+            c = o[i]
+            if q:
+                if c == "\\":
+                    i += 2
+                    continue
+                if c == q:
+                    q = None
+            elif c in "\"'`":
+                q = c
+            elif c in "([{":
+                depth += 1
+            elif c in ")]}":
+                depth -= 1
+            elif c == "?" and depth == 0 and o[i + 1:i + 2] not in (".", "?") and o[i - 1:i] != "?":
+                qi = i
+                break
+            i += 1
+        if qi < 0:
+            return None
+        rest = o[qi + 1:]
+        # split on the first top-level ':' (nested ternaries are not decomposed: they stay unsafe)
+        cut = None
+        depth, q = 0, None
+        for j, c in enumerate(rest):
+            if q:
+                if c == q:
+                    q = None
+            elif c in "\"'`":
+                q = c
+            elif c in "([{":
+                depth += 1
+            elif c in ")]}":
+                depth -= 1
+            elif c == ":" and depth == 0:
+                cut = j
+                break
+        if cut is None:
+            return None
+        return [rest[:cut], rest[cut + 1:]]
+
+    def template_safe(self, o: str, html: bool, depth: int = 0) -> bool:
+        # extract ${ ... } bodies with brace matching
+        i = 0
+        while True:
+            i = o.find("${", i)
+            if i < 0:
+                return True
+            j, d = i + 2, 1
+            while j < len(o) and d:
+                d += (o[j] == "{") - (o[j] == "}")
+                j += 1
+            if d or not self.operand_safe(o[i + 2:j - 1], html, depth + 1):
+                return False
+            i = j
+
+    def expr_safe(self, rhs: str, html: bool) -> bool:
+        return self.operand_safe(rhs.strip().rstrip(";"), html)
+
+
+# --------------------------------------------------------------------------------------
 # WEB-002  DOM XSS sinks
 # --------------------------------------------------------------------------------------
 _SANITIZED = re.compile(r"sanitiz|DOMPurify|escapeHtml|escapeHTML|encodeHTML|\bescape\s*\(|textContent|trusted|\bsafe", re.I)
@@ -542,19 +1172,44 @@ _TERNARY_LIT = re.compile(r"^.+\?\s*(?:'[^']*'|\"[^\"]*\"|`[^`$]*`)\s*:\s*(?:'[^
 _LIT_CONCAT_ALL = re.compile(r"^\s*(?:'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\")(?:\s*\+\s*(?:'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"))*\s*;?\s*$")
 
 
+PHP_JAVA_GLOBS = ["*.php", "*.phtml", "*.inc", "*.java", "*.jsp", "*.jspx"]
+
+
+def php_java_obs(ctx: ScanContext, rule_id: str, files: list[str], skip: "dict[str, set[int]] | None" = None) -> list[Observation]:
+    """Request-taint based PHP/Java/JSP findings (see web_php_java), minus lines another detector already reported."""
+    obs: list[Observation] = []
+    for rel in files:
+        kind = _pj.kind_of(rel)
+        if not kind:
+            continue
+        seen = (skip or {}).get(rel, set())
+        for line, detail, via in _pj.analyze(ctx.read(rel), kind)[rule_id]:
+            if line in seen or (via and all(any(l in seen for l in range(a, b + 1)) for a, b in via)):
+                continue
+            obs.append(Observation(rel, line, detail))
+    return obs
+
+
+_EJS_SAFE = re.compile(r"^\s*(?:include|partial|layout|body|content|contentFor|yield|block|style|script|stylesheet|"
+                       r"title|meta|_?csrf\w*)\b|\b(?:include|partial|render)\s*\(", re.I)
+
+
 @rule("SEC-WEB-002")
 def web_002(ctx: ScanContext):
-    files = non_test(sel(ctx, *JS_GLOBS))
-    if not files:
+    files = non_test(sel(ctx, *JS_GLOBS, "*.ejs"))
+    pj = non_test(sel(ctx, *PHP_JAVA_GLOBS))
+    if not files and not pj:
         return None
-    obs: list[Observation] = []
+    obs: list[Observation] = php_java_obs(ctx, "SEC-WEB-002", pj)
     inner = re.compile(r"\.(?:innerHTML|outerHTML)\s*\+?=(?!=)\s*(.*)$")
     write = re.compile(r"\bdocument\.(?:write|writeln)\s*\((.*)$")
     adj = re.compile(r"\.insertAdjacentHTML\s*\(\s*[^,)]+,\s*(.*)$")
     dang = re.compile(r"dangerouslySetInnerHTML\s*=\s*\{\{?\s*__html\s*:\s*(.*)$")
     vhtml = re.compile(r"""\bv-html\s*=\s*(["'])(.*?)\1""")
     for rel in files:
-        lines_ = read_clean(ctx, rel).split("\n")
+        ctext = read_clean(ctx, rel)
+        lines_ = ctext.split("\n")
+        consts = JsConsts(ctext)
         for i, line in enumerate(lines_, 1):
             for rx, name in ((inner, "innerHTML/outerHTML"), (write, "document.write"),
                              (adj, "insertAdjacentHTML"), (dang, "dangerouslySetInnerHTML")):
@@ -572,14 +1227,31 @@ def web_002(ctx: ScanContext):
                         j += 1
                     if _LIT_CONCAT_ALL.match(rhs) or re.search(r"\.innerHTML\b", rhs):
                         continue  # literal-only markup, or read-modify-write of the element's own markup
-                if is_literal(rhs) or _SANITIZED.search(rhs) or _TERNARY_LIT.match(rhs):
+                    if re.match(r"^\s*[\w$.\[\]]+\.(?:outerHTML|innerHTML)\s*;?\s*$", rhs):
+                        continue  # DOM-to-DOM copy of an existing node's serialisation
+                # Operand-wise analysis (see JsConsts.operand_safe): every operand of the concatenation/template
+                # must be a literal, a number, a known escaper/sanitizer call, a translation of a constant message,
+                # a const bound to a literal, or a lookup in a literal table. One unsafe operand still reports.
+                if is_literal(rhs) or _TERNARY_LIT.match(rhs) or consts.expr_safe(rhs, html=True):
                     continue
                 obs.append(Observation(rel, i, f"{name} receives a non-literal, unsanitized value"))
                 break
             else:
                 m = vhtml.search(line)
-                if m and not is_literal(m.group(2)) and not _SANITIZED.search(m.group(2)):
+                if m and not is_literal(m.group(2)) and not consts.expr_safe(m.group(2), html=True):
                     obs.append(Observation(rel, i, "v-html renders a non-literal, unsanitized expression"))
+                if rel.endswith(".svelte"):
+                    for sm in re.finditer(r"\{@html\s+([^{}]+?)\s*\}", line):
+                        if not is_literal(sm.group(1)) and not consts.expr_safe(sm.group(1), html=True):
+                            obs.append(Observation(rel, i, "{@html} renders a non-literal, unsanitized expression"))
+                            break
+                elif rel.endswith(".ejs"):
+                    for em in re.finditer(r"<%-\s*([^%]+?)\s*-?%>", line):
+                        ex = em.group(1)
+                        if _EJS_SAFE.search(ex) or is_literal(ex) or consts.expr_safe(ex, html=True):
+                            continue
+                        obs.append(Observation(rel, i, "EJS unescaped output <%- %> of a non-literal expression"))
+                        break
     return result(obs)
 
 
@@ -688,44 +1360,80 @@ _LIT = r"""(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')"""
 _LIT_CONCAT = re.compile(r"^\s*" + _LIT + r"(?:\s*\+\s*" + _LIT + r")*\s*(?:,.*)?$", re.S)
 
 
+_CI_PATH = re.compile(r"(?:^|/)\.(?:github|gitlab|circleci)/")
+_REQ_SRC = re.compile(r"\b(?:req|request)\.(?:body|query|params|headers|cookies)\b")
+
+
 @rule("SEC-WEB-005")
 def web_005(ctx: ScanContext):
-    js = non_test(sel(ctx, *JS_GLOBS))
-    py = non_test(sel(ctx, *PY_GLOBS))
-    if not js and not py:
+    js = [f for f in non_test(sel(ctx, *JS_GLOBS)) if not _CI_PATH.search(f)]
+    py = [f for f in non_test(sel(ctx, *PY_GLOBS)) if not _CI_PATH.search(f)]   # CI helper scripts are not request-reachable
+    pj = non_test(sel(ctx, *PHP_JAVA_GLOBS))
+    if not js and not py and not pj:
         return None
-    obs: list[Observation] = []
+    obs: list[Observation] = php_java_obs(ctx, "SEC-WEB-005", pj)
+    flows: dict = {}
+
+    def js_definition(text, m, span):
+        """`eval(code) {` / `async exec(cmd) {` at the start of a line is a method definition, not a call."""
+        ls = text.rfind("\n", 0, m.start()) + 1
+        after = text[m.end() - 1 + len(span):][:200]
+        return bool(re.match(r"^\s*(?:(?:async|static|public|private|protected|get|set)\s+)*$", text[ls:m.start()])
+                    and re.match(r"\s*(?::\s*[\w<>\[\]|. ]+)?\s*\{", after))
+
+    def py_const(rel, line, names, shell, pick):
+        """Python sink whose command/code argument is provably constant by local dataflow (see _PyFlow)."""
+        flow = py_flow(ctx, rel, flows)
+        calls = flow.calls_at(line, names) if flow else []
+        return bool(calls) and all(pick(c) is not None and flow.safe(pick(c), shell=shell) for c in calls)
+
+    first = lambda c: c.args[0] if c.args else next((k.value for k in c.keywords if k.arg in ("args", "command")), None)   # noqa: E731
     for rel in js:
         text = read_clean(ctx, rel)
+        consts = JsConsts(text)
         for m in re.finditer(r"(?<![\w.$])(?<!function )eval\s*\(", text):
             span = call_span(text, m.end() - 1)
-            if not is_literal(span[1:-1]) and _untrusted_expr(span[1:-1], _JS_DYN):
+            if js_definition(text, m, span):
+                continue
+            if not is_literal(span[1:-1]) and _untrusted_expr(span[1:-1], _JS_DYN) \
+                    and not consts.expr_safe(span[1:-1], html=False):
                 obs.append(Observation(rel, line_of(text, m.start()), "eval() with non-literal argument"))
+        for m in re.finditer(r"(?<=[\w$])\.(?:eval|evaluate|runInNewContext|runInThisContext)\s*\(", text):
+            span = call_span(text, m.end() - 1)   # `mathjs.eval(req.body.expr)`: request data straight into an evaluator
+            if _REQ_SRC.search(span) and not js_definition(text, m, span):
+                obs.append(Observation(rel, line_of(text, m.start()), "expression/code evaluator fed request data"))
         for m in re.finditer(r"\bnew\s+Function\s*\(", text):
             span = call_span(text, m.end() - 1)
-            if not all(is_literal(p) for p in span[1:-1].split(",")):
+            if not all(is_literal(p) for p in span[1:-1].split(",")) \
+                    and not all(consts.expr_safe(p, html=False) for p in split_top(span[1:-1], ",")):
                 obs.append(Observation(rel, line_of(text, m.start()), "new Function() built from non-literal input"))
         for m in re.finditer(r"(?<![\w.$])(?:exec|execSync)\s*\(|\b(?:child_process|childProcess|cp)\.(?:exec|execSync)\s*\(", text):
             span = call_span(text, m.end() - 1)
             fa = first_arg(span)
-            if not fa.lstrip().startswith("{") and _JS_DYN.search(fa):
+            if js_definition(text, m, span):
+                continue
+            if not fa.lstrip().startswith("{") and _JS_DYN.search(fa) and not consts.expr_safe(fa, html=False):
                 obs.append(Observation(rel, line_of(text, m.start()),
                                        "child_process exec with concatenated/templated command string"))
     for rel in py:
         text = read_clean(ctx, rel)
         for m in re.finditer(r"\bos\.(?:system|popen)\s*\(", text):
             span = call_span(text, m.end() - 1)
-            if _PY_DYN.search(span) and not _LIT_CONCAT.match(span[1:-1]):
+            if _PY_DYN.search(span) and not _LIT_CONCAT.match(span[1:-1]) \
+                    and not py_const(rel, line_of(text, m.start()), ("os.system", "os.popen"), True, first):
                 obs.append(Observation(rel, line_of(text, m.start()), "os.system/popen with dynamically built command"))
         for m in re.finditer(r"\bsubprocess\.(?:run|call|check_output|check_call|Popen)\s*\(", text):
             span = call_span(text, m.end() - 1)
-            if re.search(r"shell\s*=\s*True", span) and _PY_DYN.search(span) and not _LIT_CONCAT.match(span[1:-1]):
+            if re.search(r"shell\s*=\s*True", span) and _PY_DYN.search(span) and not _LIT_CONCAT.match(span[1:-1]) \
+                    and not py_const(rel, line_of(text, m.start()), tuple("subprocess." + f for f in (
+                        "run", "call", "check_output", "check_call", "Popen")), True, first):
                 obs.append(Observation(rel, line_of(text, m.start()),
                                        "subprocess with shell=True and dynamically built command"))
         for m in re.finditer(r"(?<![\w.])(?<!def )(?:eval|exec)\s*\(", text):
             span = call_span(text, m.end() - 1)
             fa = first_arg(span)
-            if not is_literal(fa) and _untrusted_expr(fa, _PY_DYN):
+            if not is_literal(fa) and _untrusted_expr(fa, _PY_DYN) \
+                    and not py_const(rel, line_of(text, m.start()), ("eval", "exec"), False, first):
                 obs.append(Observation(rel, line_of(text, m.start()), "eval/exec with non-literal argument"))
     return result(obs)
 
@@ -738,27 +1446,66 @@ _SQL_KW = re.compile(r"""(?i)["'`]\s*(?:SELECT\s+(?:DISTINCT\s+)?""" + _SEL_COL 
 _SQL_DYN = re.compile(r"""\bf"[^"]*\{|\bf'[^']*\{|["']\s*\+\s*(?:[\w(]|$)|[\w)]\s*\+\s*["']|\.format\(|["']\s*%\s+[\w(]|["']\s*%\(|\$\{""")
 
 
+_IDENT_HELPER = r"(?:get_\w*name\w*\(|quote_\w+\(|\bqn\(|escape_identifier|quoted_name)"
+_DDL_CTX = re.compile(r"(?i)\b(?:CREATE|ALTER|DROP|TRIGGER|PRAGMA|REINDEX|VACUUM|ATTACH|DETACH|RENAME)\b")
+_WRAP_NAME = re.compile(r"(?i)(?:^|[_.])(?:\w*sql|\w*query|subquery|compiled\w*|placeholder_rows|rows_sql)$")
+
+
+def _compiled_sql_wrap(line: str) -> bool:
+    """`"SELECT * FROM ({})".format(part_sql)` / `f"SELECT * FROM {placeholder_rows}"` / `"... (%s) subquery" % sql`:
+    the ONLY dynamic piece is a whole compiled statement/derived table (name evidence: *_sql, *query, compiled*)."""
+    m = re.search(r"""(?i)["']\s*SELECT\s+\*\s+FROM\s+\(?\s*(?:\{(\w*)\}|%s)\s*\)?(?:\s+\w+)?\s*["']""", line)
+    if not m:
+        return False
+    if m.group(1):   # f-string `{name}`
+        return bool(_WRAP_NAME.search(m.group(1))) and line.count("{") == 1
+    fm = re.search(r"\.format\(\s*([\w.]+)\s*\)", line)
+    pm = re.search(r"""["']\s*%\s*([\w.]+)\s*[,)]?""", line)
+    name = (fm or pm).group(1) if (fm or pm) else ""
+    return bool(_WRAP_NAME.search(name)) and line.count("{") <= 1
+
+
 @rule("SEC-WEB-006")
 def web_006(ctx: ScanContext):
     files = non_test(sel(ctx, *CODE_GLOBS, *OTHER_SRC_GLOBS))
     if not files:
         return None
+    flows: dict = {}
+
     def chk(line, m, ls, i, rel):
         kw = re.search(r"[A-Za-z]+", m.group(0)).group(0)
         if len(kw) > 1 and kw[0].isupper() and kw[1:].islower():
             return None  # Title-case "Select ..."/"Delete from ..." is prose, not SQL
         if re.search(r"quote_name|quote_ident|escape_identifier|quoted_name|\bquote\(", line):
             return None  # identifier passed through the driver's quoting helper
+        if re.search(r"noqa:\s*(?:[A-Z]\d+\s*,\s*)*S608|#\s*nosec\b", line):
+            return None  # author acknowledged the dynamic statement (bandit B608 / ruff S608 suppression)
+        if _compiled_sql_wrap(line):
+            return None  # `SELECT * FROM ({compiled_sql})`: wraps an already-compiled statement, params bound separately
         stripped = re.sub(r"\$\{[A-Z][A-Z0-9_.]*\}|\{[A-Z][A-Z0-9_]*\}", "", line)  # constant interpolation
+        # identifier position + explicit identifier-helper evidence (quoted/validated helper call): not injectable
+        stripped = re.sub(r"(?i)\b(FROM|INTO|UPDATE|TABLE|JOIN|ON|TRIGGER|INDEX)\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?\{[^{}]*" + _IDENT_HELPER + r"[^{}]*\}",
+                          r"\1 X", stripped)
+        if _DDL_CTX.search(line):   # DDL/PRAGMA/TRIGGER: identifiers cannot be bound; accept only evidenced identifiers
+            stripped = re.sub(r"\{[^{}]*(?:" + _IDENT_HELPER + r"|\b\w*_table(?:_name)?\b|\btable_?name\b|\bcolumn_?name\b|"
+                              r"\bindex_?name\b|\btrigger_?name\b|\bschema_?name\b)[^{}]*\}", "", stripped)
         # identifiers cannot be bound as parameters: `FROM {self.table_name}` / `FROM %s" % table`
         stripped = re.sub(r"(?i)\b(FROM|INTO|UPDATE|TABLE|JOIN)\s+(?:\$?\{[^{}]*(?:table|tbl|schema)[^{}]*\}"
                           r"|%s[\"']?\s*%\s*\(?\s*[\w.]*(?:table|tbl)\w*\s*,?\s*\)?)", r"\1 X", stripped)
         if _SQL_DYN.search(stripped):
-            return True
+            if rel.endswith(".java") and not _pj.java_line_dynamic(line, ctx.read(rel)):
+                return None   # every concatenated operand is a constant / numeric-typed / parsed value
+            # Python: every interpolated fragment provably constant / closed-set by local dataflow => not injectable
+            flow = py_flow(ctx, rel, flows)
+            return not (flow and flow.sql_safe(i + 1))
         # PHP: "..." . $var concatenation / "$var" interpolation
         return rel.endswith(".php") and bool(re.search(r"[\"']\s*\.\s*\$\w|\"[^\"]*\$\w+", line))
     obs = scan_lines(ctx, files, _SQL_KW, check=chk,
                      detail="SQL statement built with string concatenation/interpolation")
+    seen: dict[str, set[int]] = {}
+    for o in obs:
+        seen.setdefault(o.file, set()).add(o.line)
+    obs += php_java_obs(ctx, "SEC-WEB-006", [f for f in files if _pj.kind_of(f)], seen)
     return result(obs)
 
 

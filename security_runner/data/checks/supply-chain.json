@@ -24,7 +24,7 @@
           "pyproject.toml"
         ]
       },
-      "expected_secure_behavior": "Every dependency manifest has a committed lockfile so builds are reproducible.",
+      "expected_secure_behavior": "Every deployed application manifest has a committed lockfile so builds are reproducible. Published libraries and manifests under vendored, third-party, example, docs or test trees are out of scope.",
       "remediation": "Commit package-lock.json / yarn.lock / pnpm-lock.yaml / Pipfile.lock / poetry.lock and install with the frozen-lockfile option in CI.",
       "review_state": "reviewed",
       "standards": {
@@ -194,7 +194,7 @@
         "deep"
       ],
       "applies_to": {},
-      "expected_secure_behavior": "No credentials or private keys are committed; secrets are injected at runtime from a secret store.",
+      "expected_secure_behavior": "No credentials or private keys are committed; secrets are injected at runtime from a secret store. Documentation sample values, crypto test vectors, keys that merely name a secret location, and synthetic reserved-domain accounts in smoke/packaging scripts, UI text in translation catalogs (non-token-shaped values under locale/i18n/language dirs or .po/.pot), claim/prefix/header-name constants, and values assigned from a shell/env variable reference are not findings; provider-format tokens and private keys always are.",
       "remediation": "Rotate the exposed secret, remove it from history, and load it from environment variables or a secrets manager; add secret scanning to CI.",
       "review_state": "reviewed",
       "standards": {

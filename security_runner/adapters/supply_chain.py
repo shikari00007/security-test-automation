@@ -52,6 +52,19 @@ _LOCKS = {
 }
 
 
+# Trees whose manifests are not deployed applications of this repository: vendored/third-party code,
+# examples/samples/demos, documentation and test fixtures. A manifest is only treated this way when the
+# segment is a *parent directory* of a non-root manifest (a root manifest is always evaluated), so a
+# top-level app is never hidden by this rule.
+_NON_APP_DIRS = {"third_party", "third-party", "thirdparty", "vendored", "external", "extern",
+                 "example", "examples", "sample", "samples", "demo", "demos", "docs", "doc", "documentation",
+                 "test", "tests", "__tests__", "testdata", "test-data", "fixtures", "fixture", "e2e", "playground"}
+
+
+def _in_non_app_tree(rel: str) -> bool:
+    return bool(_NON_APP_DIRS.intersection(s.lower() for s in rel.split("/")[:-1]))
+
+
 def _has_lock(ctx: ScanContext, rel: str, names) -> bool:
     d = rel.rsplit("/", 1)[0] if "/" in rel else ""
     fileset = set(ctx.files)
@@ -77,6 +90,8 @@ def sc_001(ctx: ScanContext):
         return None
     obs: list[Observation] = []
     for rel in sorted(manifests):
+        if _in_non_app_tree(rel):
+            continue  # vendored / example / docs / test tree: not a deployed application of this repo
         text = ctx.read(rel)
         base = rel.rsplit("/", 1)[-1]
         if base == "package.json":
@@ -85,7 +100,7 @@ def sc_001(ctx: ScanContext):
                 if not any(isinstance(doc.get(s), dict) and doc.get(s) for s in DEP_SECTIONS):
                     continue
                 scripts = doc.get("scripts") if isinstance(doc.get("scripts"), dict) else {}
-                if any(k in doc for k in ("main", "module", "exports", "types", "typings", "bin", "files", "keywords", "publishConfig", "sideEffects")) \
+                if any(k in doc for k in ("main", "module", "exports", "types", "typings", "bin", "files", "keywords", "publishConfig", "sideEffects", "peerDependencies")) \
                         and doc.get("private") is not True and "start" not in scripts:
                     continue  # published library: lockfiles are not committed/consumed downstream
             except (ValueError, IndexError, RecursionError):
@@ -102,6 +117,11 @@ def sc_001(ctx: ScanContext):
             names = _LOCKS[base]
         elif base == "pyproject.toml":
             if "[tool.poetry" in text:
+                # Library heuristic: package metadata aimed at an index (classifiers/keywords) and no
+                # explicit `package-mode = false` (poetry's marker for a non-package application).
+                if re.search(r"^\s*(?:classifiers|keywords)\s*=", text, re.M) \
+                        and not re.search(r"^\s*package-mode\s*=\s*false", text, re.M):
+                    continue
                 names = ("poetry.lock",)
             elif "[tool.pdm" in text:
                 names = ("pdm.lock",)
@@ -111,6 +131,9 @@ def sc_001(ctx: ScanContext):
                 continue
         else:
             names = _LOCKS[base]
+            if base == "Pipfile" and "setup.py" in {f.rsplit("/", 1)[-1] for f in ctx.files
+                                                   if f.rsplit("/", 1)[0] == rel.rsplit("/", 1)[0] or "/" not in f and "/" not in rel}:
+                continue  # Pipfile only provides a dev environment for an installable library (setup.py)
             _pre = rel.rsplit("/", 1)[0] + "/" if "/" in rel else ""
             if base == "Cargo.toml" and ("[lib]" in text or _pre + "src/lib.rs" in set(ctx.files)) \
                     and "[[bin]]" not in text and _pre + "src/main.rs" not in set(ctx.files):
@@ -391,8 +414,12 @@ def _looks_secret(v: str) -> bool:
         return False
     if re.match(r"\d{4}-\d{2}-\d{2}(?:[T ]|$)", v) or re.match(r"https?://[^@\s]*$", v) or re.fullmatch(r"[a-z]+/[a-z]+", v):
         return False  # timestamp / plain URL / service-principal-like path
-    if "::" in v or re.fullmatch(r"[A-Za-z]+[?!]*", v) or re.fullmatch(r"[A-Za-z]+(?:[-_.][A-Za-z]+)+", v):
-        return False  # C++/enum-style name or a bare word / type name
+    if "::" in v or re.fullmatch(r"[^\W\d_]+[?!]*", v) or re.fullmatch(r"[A-Za-z]+(?:[-_.][A-Za-z]+)+", v):
+        return False  # C++/enum-style name or a bare word / type name (unicode-aware: 'Lösenord', 'contraseña')
+    if re.fullmatch(r"\$\{[A-Za-z_]\w*(?::?[-=?+][^}]*)?\}|\$[A-Z_][A-Z0-9_]*|\$\([^()]*\)", v):
+        return False  # iter2: shell/env variable reference ($VAR, ${var:-x}, $(cmd)): value comes from the environment
+    if re.fullmatch(r"_*[a-z]+(?:[-_.][a-z]+)*[-_.]", v) or re.fullmatch(r"_+[a-z][a-z0-9]*(?:_[a-z0-9]+)*", v):
+        return False  # iter2: key PREFIX ('django-insecure-') or underscore-led snake identifier ('_app_claim_name')
     if _UUID.match(v) or re.fullmatch(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+", v):
         return False  # GUID / UPPER_SNAKE constant name
     if v.startswith(("/", "./", "~/")) or re.fullmatch(r"[a-z]+(?:[-_.][a-z]+)+", v):
@@ -401,6 +428,65 @@ def _looks_secret(v: str) -> bool:
     has_digit = re.search(r"\d", v) is not None
     has_special = re.search(r"[^A-Za-z0-9]", v) is not None
     return bool(has_alpha and (has_digit or has_special))
+
+
+# --- precision heuristics for the *generic* (non provider-format) detector only -------------------
+# Provider-format tokens (AKIA.., ghp_.., xox.., PEM keys) never go through these checks.
+_DOCS_PATH = re.compile(r"(?:^|/)(?:docs?|documentation|examples?|samples?|demos?|tutorials?)/", re.I)
+# Files that smoke-test / package / verify a build against a throwaway environment.
+_SMOKE_TOKENS = {"smoke", "packaging", "package", "sanity", "verify", "e2e", "ci", "healthcheck", "selftest"}
+# Identity on a reserved (RFC 2606/6761) domain => synthetic account that cannot exist on the internet.
+_RESERVED_ID = re.compile(r"(?i)[\w.+-]+@(?:[\w-]+\.)*(?:example\.(?:com|org|net)|[\w-]+\.(?:test|invalid|example|localhost)|localhost)\b")
+# Names a secret / says how to obtain it, rather than being the secret.
+_NAME_SUFFIX = re.compile(r"(?:[_-](?:env|envvar|var|name|file|path|label|header|field|prompt|placeholder|hint|policy|regex|pattern|type|length|claim|prefix|suffix|scheme|cookie|param|attr|attribute))$"
+                          r"|[a-z](?:Env|Var|Name|File|Path|Label|Header|Field|Prompt|Placeholder|Hint|Policy|Regex|Pattern|Type|Length|Claim|Prefix|Suffix|Scheme|Cookie|Param|Attr|Attribute)$", re.I)
+# Well-known documentation / tutorial sample secrets and obviously synthetic shapes.
+_SAMPLE_VALUE = re.compile(r"(?i)^(?:hunter2|letmein|qwerty\w*|s3cr3t\w*|secret\d*|password\d*|p@ss?w0rd\d*|passw0rd\d*|supersecret\w*|mysecret\w*|"
+                           r"correct[-_ ]?horse\w*|(?:test|demo|mock|sample)[-_.]?[\w.-]*|\w*(?:abc123|abcdef|123456|12345678)\w*|(.)\1{5,})$")
+_VECTOR_MARK = re.compile(r"(?i)test[ _-]?vectors?|known[ _-]answer|\bKAT\b|\bRFC[ -]?\d{3,4}\b|wycheproof|ciphertext|plaintext|\bnonce\b")
+_VECTOR_PATH = re.compile(r"(?i)(?:^|[/._-])(?:vectors?|testvectors?|kat|rfc\d+|wycheproof)(?:[/._-]|$)")
+
+
+def _entropy(v: str) -> float:
+    from math import log2
+    return -sum(c / len(v) * log2(c / len(v)) for c in (v.count(x) for x in set(v))) if v else 0.0
+
+
+def _high_entropy_key(v: str) -> bool:
+    return len(v) >= 24 and _entropy(v) >= 3.5 and re.search(r"[A-Za-z]", v) is not None and re.search(r"\d", v) is not None
+
+
+def _generic_noise(rel: str, key: str, val: str, lines_all: list[str], i: int) -> bool:
+    """True when a generic credential-looking literal is documentation/test material rather than a secret."""
+    key = key.strip(" \t\"'")
+    if _NAME_SUFFIX.search(key):
+        return True   # `password_env = "DB_PASS_9"`, `secretName`: key names a secret location, not its value
+    if _DOCS_PATH.search(rel):
+        return True   # documentation / example / sample / demo trees (provider tokens are handled elsewhere)
+    if _SAMPLE_VALUE.match(val):
+        return True   # tutorial sample values (hunter2, password123, test-xxx, 12345678, aaaaaa...)
+    if re.fullmatch(r"(?:0x)?[0-9a-fA-F]{16,}", val) and (
+            _VECTOR_PATH.search(rel) or any(_VECTOR_MARK.search(x) for x in lines_all[max(0, i - 11):i + 10])):
+        return True   # hex key material inside a crypto known-answer test / RFC vector table
+    toks = set(re.split(r"[/._-]+", rel.lower()))
+    if toks & _SMOKE_TOKENS and not _high_entropy_key(val):
+        window = "\n".join(lines_all[max(0, i - 4):i + 3])
+        if _RESERVED_ID.search(window):
+            return True   # smoke/packaging script logging in as a synthetic reserved-domain account
+    return False
+
+
+# iter2: translation catalogs. UI text such as "password": "Lösenord" or a .po msgstr describing a
+# `user:password@host` URL template is human language, not key material. Rule: in a locale-named
+# directory (or .po/.pot) the *generic* and URL-credential detectors only fire when the value is
+# TOKEN-SHAPED (ASCII, >=20 chars, no whitespace, letters+digits, entropy >= 3.5). Provider-format
+# tokens (ghp_, AKIA.., xox.., PEM keys ...) are never subject to this and are always reported.
+_LOCALE_PATH = re.compile(r"(?i)\.pot?$|(?:^|/)(?:language|languages|lang|langs|locale|locales|l10n|i18n|translations?|lc_messages)/")
+
+
+def _token_shaped(v: str) -> bool:
+    return (len(v) >= 20 and v.isascii() and not re.search(r"\s", v) and re.search(r"[A-Za-z]", v) is not None
+            and re.search(r"\d", v) is not None and _entropy(v) >= 3.5)
 
 
 def _PROVIDER_ANY(line: str) -> bool:
@@ -441,22 +527,27 @@ def sc_006(ctx: ScanContext):
                     or re.match(r"[A-Za-z0-9+/=]{16,}$|(?:Proc-Type|DEK-Info|Version|Comment):", nxt)
                 if "XXXX" in line or _TEST_PATH.search(rel) or not has_body:
                     hit = None  # documentation example / test vector / bare header constant
-            if hit == "AWS access key ID" and "EXAMPLE" in line and re.search(r"(?i)example|docs?/|sample|test", rel):
+            if hit == "AWS access key ID" and "EXAMPLE" in line and (
+                    re.search(r"(?i)example|docs?/|sample|test", rel) or _LOCALE_PATH.search(rel)):
                 hit = None  # AWS documentation sample key in docs/examples/tests
             if hit is None and re.search(r"(?i)\bexamples?\b|e\.g\.|usage:", line) and not _PROVIDER_ANY(line):
                 continue
             if hit is None and not _ENV_REF.search(line) and not _TEST_PATH.search(rel) and len(line) <= 600:
                 line = gen_line
                 m = _GENERIC_Q.search(line)
-                if m and _real_keyword(re.split(r"[:=]", m.group(0), maxsplit=1)[0]) and _looks_secret(m.group(1)):
+                kname = re.split(r"[:=]", m.group(0), maxsplit=1)[0] if m else ""
+                if m and _real_keyword(kname) and _looks_secret(m.group(1)) \
+                        and not (_LOCALE_PATH.search(rel) and not _token_shaped(m.group(1))) \
+                        and not _generic_noise(rel, kname, m.group(1), lines_all, i - 1):
                     hit = "hardcoded credential literal"
                 elif uq:
                     m = _GENERIC_UQ.match(line)
-                    if m and _looks_secret(m.group(1)):
+                    if m and _looks_secret(m.group(1)) \
+                            and not _generic_noise(rel, re.split(r"[:=]", m.group(0), maxsplit=1)[0], m.group(1), lines_all, i - 1):
                         hit = "hardcoded credential value in configuration"
                 if hit is None:
                     m = _URL_CRED.search(line)
-                    if m and _looks_secret(m.group(1)):
+                    if m and _looks_secret(m.group(1)) and not (_LOCALE_PATH.search(rel) and not _token_shaped(m.group(1))):
                         hit = "credentials embedded in a URL"
             if hit:
                 obs.append(Observation(rel, i, f"Possible hardcoded secret ({hit}); value withheld"))

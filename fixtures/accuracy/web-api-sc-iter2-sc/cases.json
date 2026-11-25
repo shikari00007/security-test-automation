@@ -1,0 +1,220 @@
+{
+ "cases": [
+  {
+   "id": "sc006i2-neg-locale-json-ui-labels",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "UI label words in locale json catalogs",
+   "files": {
+    "public/language/de/user.json": "{\n  \"password\": \"Passwort ändern\",\n  \"reset.password\": \"Kennwort\",\n  \"apiKey\": \"Schlüssel\"\n}\n",
+    "locales/fr/login.json": "{\n  \"password\": \"Mot de passe\",\n  \"secret_question\": \"Question secrète\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-locale-unicode-single-word",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "single non-ASCII words in translations/ and i18n/",
+   "files": {
+    "i18n/pl/forms.json": "{\n  \"password\": \"Hasło\",\n  \"token\": \"Żeton\"\n}\n",
+    "translations/ru.json": "{\n  \"password\": \"Пароль1\",\n  \"access_token\": \"Токен доступа\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-po-url-template",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "gettext msgstr describing user:password@host template",
+   "files": {
+    "app/locale/es/LC_MESSAGES/django.po": "msgid \"Use scheme://user:password@host/db\"\nmsgstr \"Use esquema://usuario:contrasena@servidor/base\"\n",
+    "lang/it.po": "msgstr \"mysql://utente:parolachiave@host_db/nome\"\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-locale-aws-doc-key-pot",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "documented AWS example key inside a translation catalog",
+   "files": {
+    "app/translations/messages.pot": "msgid \"Key looks like AKIAIOSFODNN7EXAMPLE\"\nmsgstr \"\"\n",
+    "public/language/en-GB/aws.json": "{\"hint\": \"AKIAIOSFODNN7EXAMPLE is shown in the AWS docs\"}\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-claim-and-prefix-constants",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "constants naming a claim or holding a key prefix",
+   "files": {
+    "auth/consts.py": "API_KEY_CLAIM = \"_svc_api_key_passthrough\"\nSECRET_KEY_INSECURE_PREFIX = \"myapp-insecure-\"\nTOKEN_COOKIE_NAME = \"sessiontok_v2\"\n",
+    "web/keys.js": "const ACCESS_TOKEN_HEADER = \"x-access-token-v2\";\nconst SECRET_PREFIX = \"sec_internal_\";\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-underscore-led-identifier",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "underscore-led lowercase snake identifier values",
+   "files": {
+    "svc/claims.py": "PASSWORD_FIELD_KEY = \"_validated_password_marker\"\nAUTH_TOKEN_ATTR_KEY = \"_current_auth_token\"\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-trailing-separator-prefix",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "values ending in a separator are prefixes, not keys",
+   "files": {
+    "conf/prefix.py": "API_KEY_PREFIX_VALUE = \"svcproj-live-\"\nclient_secret_marker = \"internal.secret.\"\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-shell-var-reference",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "assigned from shell variable references",
+   "files": {
+    "scripts/run.sh": "#!/bin/sh\nenv \\\n  SERVICE_AUTH_TOKEN=\"$GATEWAY_KEY\" \\\n  DB_PASSWORD=\"${DB_PASS:-}\" \\\n  API_KEY=\"$(cat /run/secrets/k)\" \\\n  tool run\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-shell-braced-var",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "braced reference in Dockerfile/CI-style script",
+   "files": {
+    "ci/deploy.sh": "export ACCESS_TOKEN=\"${CI_JOB_TOKEN}\"\nexport CLIENT_SECRET=\"${client_secret_in}\"\n",
+    "build/setup.py": "cfg = {\"password\": \"$DB_PW_FROM_ENV\"}\n"
+   }
+  },
+  {
+   "id": "sc006i2-neg-shell-var-unquoted-yaml",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "unquoted env reference in config",
+   "files": {
+    "deploy/app.yml": "api_key: $VENDOR_API_KEY\npassword: ${DB_PASSWORD}\n"
+   }
+  },
+  {
+   "id": "sc006i2-pos-locale-token-shaped",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "real-looking token value in locale-named dir still flagged",
+   "files": {
+    "public/language/en/settings.json": "{\n  \"password\": \"Mot de passe\",\n  \"apiKey\": \"k3J9xQ2mZp8LrT5vB7nW1dYc\"\n}\n"
+   },
+   "expect": [
+    [
+     "public/language/en/settings.json",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-locale-provider-token",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "provider-format GitHub token inside translations still flagged",
+   "files": {
+    "app/translations/en.json": "{\"deploy_token\": \"ghp_aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5\"}\n"
+   },
+   "expect": [
+    [
+     "app/translations/en.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-po-real-url-cred",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "URL credential with token-shaped password in .po still flagged",
+   "files": {
+    "app/locale/en/LC_MESSAGES/django.po": "msgid \"x\"\nmsgstr \"postgresql://admin:Zx9qL2mV8tRw4Kp7Hd3Fa@db.internal/app\"\n"
+   },
+   "expect": [
+    [
+     "app/locale/en/LC_MESSAGES/django.po",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-locale-real-aws-key",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "AWS-format key that is not the documented EXAMPLE key, in .pot, still flagged",
+   "files": {
+    "translations/messages.pot": "msgid \"e.g. AKIAJ7QXW3PLMN4ZR5TB\"\n"
+   },
+   "expect": [
+    [
+     "translations/messages.pot",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-code-aws-key",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "AWS-format key in app code is flagged",
+   "files": {
+    "app/cloud.py": "KEY = \"AKIAJ7QXW3PLMN4ZR5TB\"\n"
+   },
+   "expect": [
+    [
+     "app/cloud.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-shell-literal-token",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "literal value (not a reference) in shell script still flagged",
+   "files": {
+    "scripts/run.sh": "export SERVICE_AUTH_TOKEN=\"a8Zk3Qm9xT2vLp7Rw4Nd\"\n"
+   },
+   "expect": [
+    [
+     "scripts/run.sh",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-secret-key-in-settings",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "hardcoded SECRET_KEY literal in app settings still flagged (tutorial app: TP-opt)",
+   "files": {
+    "proj/settings.py": "# unsuitable for production\nSECRET_KEY = \"x2^f+3@v7$v1f8yt0!s)3-1t$)tlp+xm17=*g\"\n"
+   },
+   "expect": [
+    [
+     "proj/settings.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006i2-pos-claim-name-near-miss",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "key named like a claim-free secret with random value still flagged",
+   "files": {
+    "auth/cfg.py": "API_KEY = \"_Zk9x3QmT2vLp7Rw4Nd8\"\n"
+   },
+   "expect": [
+    [
+     "auth/cfg.py",
+     1
+    ]
+   ]
+  }
+ ]
+}

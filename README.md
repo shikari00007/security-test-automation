@@ -203,12 +203,13 @@ The pytest generator is verified red/green against the local secure and vulnerab
 
 | Area | Status |
 |---|---|
-| Static rule precision, Web / API / Supply chain (23 rules) | **51% strict precision** (85% if correct patterns in benign or intentional contexts are counted) in a triage of 282 real findings; weakest rules: SC-001 4%, WEB-002 4%, WEB-005 8%, SC-006 20%. These are low confidence and excluded from Quick and from the default CI gate. Seven rules produced no field findings, so their accuracy rests on a synthetic corpus only |
+| Static rule precision, Web / API / Supply chain (23 rules), earlier field triage before the rule rework | **51% strict precision** (85% if correct patterns in benign or intentional contexts are counted) in a triage of 282 real findings; weakest rules: SC-001 4%, WEB-002 4%, WEB-005 8%, SC-006 20%. These are low confidence and excluded from Quick and from the default CI gate. Seven rules produced no field findings, so their accuracy rests on a synthetic corpus only |
+| Reworked rules (SC-001, SC-006, WEB-002, WEB-005, WEB-006), fresh hold-out | Independent blind labelling of 51 findings on 6 realistic repos the authors never saw: **0 shown exploitable (strict precision 0%)**, 82% genuine patterns in benign or intentional context (up from 66% before the rework), 18% false positives. Recall on 83 known-vulnerable locations rose from 29% to 42% (PHP 5/17 to 14/17) but stays very low for Python (2/20) and TypeScript (3/17). SEC-WEB-002 precision did not improve; some samples are small. The two measurements use different samples and labelling and are not comparable. See [docs/ACCURACY-HOLDOUT.md](docs/ACCURACY-HOLDOUT.md) |
 | Mobile / Desktop / Cloud rules (21 rules) | 88% before fixes, 100% after - but tuned on the same sample, which leans toward intentionally vulnerable apps, so treat it as optimistic |
 | AI / LLM rules (4) | **Experimental.** Zero findings on five public repositories; no true positive observed, so recall is unmeasured. The methodology was independently reviewed; the post-review code was not |
 | Dynamic testing, external tool adapters | **Not implemented.** 15 checks are catalogued but never executed |
 | Regression generators | pytest verified; Playwright / Schemathesis are skeletons |
-| Static analysis | Line and pattern based, no data-flow analysis; expect false positives **and** false negatives |
+| Static analysis | Mostly line and pattern based with limited same-function dataflow; PHP and Java sink detection is new and has no benign real-world corpus behind it; expect false positives **and** false negatives |
 | A passed check | Covers only that check's pattern, not an application or a vulnerability class |
 | Live agent testing | Skill discovery was verified in Claude Code only |
 

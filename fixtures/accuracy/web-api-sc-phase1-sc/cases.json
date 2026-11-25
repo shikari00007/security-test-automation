@@ -1,0 +1,269 @@
+{
+ "cases": [
+  {
+   "id": "sc001p1-neg-examples-tree",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "manifest under examples/ is not a deployed app",
+   "files": {
+    "examples/demo-app/package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"},\"scripts\":{\"start\":\"node server.js\"}}"
+   }
+  },
+  {
+   "id": "sc001p1-neg-vendored-third-party",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "third_party / vendored trees",
+   "files": {
+    "third_party/lib/package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"}}",
+    "vendored/x/Gemfile": "source 'x'\ngem 'rails'\n"
+   }
+  },
+  {
+   "id": "sc001p1-neg-docs-and-test-trees",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "docs and tests trees",
+   "files": {
+    "docs/site/package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"}}",
+    "tests/e2e/app/package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"}}",
+    "fixtures/node/composer.json": "{\"require\":{\"a/b\":\"^1\"}}"
+   }
+  },
+  {
+   "id": "sc001p1-neg-peer-dependency-library",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "library declaring peerDependencies, no start",
+   "files": {
+    "package.json": "{\"name\":\"plugin\",\"version\":\"1.0.0\",\"peerDependencies\":{\"react\":\"^18\"},\"dependencies\":{\"x\":\"^1\"}}"
+   }
+  },
+  {
+   "id": "sc001p1-neg-poetry-library",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "poetry library with classifiers",
+   "files": {
+    "pyproject.toml": "[tool.poetry]\nname=\"lib\"\nclassifiers=[\"License :: OSI Approved\"]\n"
+   }
+  },
+  {
+   "id": "sc001p1-neg-pipfile-with-setup-py",
+   "rule": "SEC-SC-001",
+   "kind": "negative",
+   "note": "Pipfile dev env for installable lib",
+   "files": {
+    "Pipfile": "[packages]\nrequests='*'\n",
+    "setup.py": "from setuptools import setup\nsetup()\n"
+   }
+  },
+  {
+   "id": "sc001p1-pos-root-app-start-script",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "root app with start script and no lockfile",
+   "files": {
+    "package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"},\"scripts\":{\"start\":\"node server.js\"}}"
+   },
+   "expect": [
+    [
+     "package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001p1-pos-service-named-like-example-file",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "services/ tree (not an excluded dir) still flagged; example-api is a name, not a directory segment",
+   "files": {
+    "services/example-api/package.json": "{\"name\":\"app\",\"dependencies\":{\"express\":\"^4.0.0\"},\"scripts\":{\"start\":\"node server.js\"}}"
+   },
+   "expect": [
+    [
+     "services/example-api/package.json",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001p1-pos-poetry-app-package-mode-false",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "poetry app (package-mode false) with keywords still flagged",
+   "files": {
+    "pyproject.toml": "[tool.poetry]\nname=\"svc\"\npackage-mode = false\nkeywords=[\"x\"]\n"
+   },
+   "expect": [
+    [
+     "pyproject.toml",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc001p1-pos-pipfile-app",
+   "rule": "SEC-SC-001",
+   "kind": "positive",
+   "note": "Pipfile without setup.py is an app",
+   "files": {
+    "svc/Pipfile": "[packages]\nflask='*'\n",
+    "svc/app.py": "x=1\n"
+   },
+   "expect": [
+    [
+     "svc/Pipfile",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-neg-smoke-script-reserved-domain",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "smoke script, throwaway account on .test",
+   "files": {
+    "scripts/smoke_package.py": "import requests\nrequests.post(URL + \"/login\", json={\"email\": \"smoke@acme.test\", \"password\": \"Smoke-Pass-9z!\"})\n"
+   }
+  },
+  {
+   "id": "sc006p1-neg-smoke-sh-example-com",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "packaging script, example.com account",
+   "files": {
+    "packaging/verify.sh": "curl -d '{\"email\":\"qa@example.com\",\"password\":\"Qa-Temp-77x!\"}' $URL/login\n"
+   }
+  },
+  {
+   "id": "sc006p1-neg-key-names-a-secret-location",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "key name suffixes naming env/file, not secret",
+   "files": {
+    "c.py": "cfg = {\"password_env\": \"DB_PASS_9\", \"secretName\": \"prod/db-secret-1\", \"api_key_file\": \"k9.txt\", \"client_secret_path\": \"/run/s9/x1\"}\n"
+   }
+  },
+  {
+   "id": "sc006p1-neg-doc-sample-values",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "tutorial sample values",
+   "files": {
+    "a.py": "password = \"hunter2\"\nconf = {\"secret\": \"password123\"}\napi_key = \"test-key-9\"\ntoken_secret = \"12345678a\"\n"
+   }
+  },
+  {
+   "id": "sc006p1-neg-docs-and-examples-trees",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "generic literals under docs/examples trees",
+   "files": {
+    "docs/setup.py": "db_password = \"Rx9!kLm2pQ\"\n",
+    "examples/app/conf.yml": "db_password: Rx9!kLm2pQ\n"
+   }
+  },
+  {
+   "id": "sc006p1-neg-crypto-test-vectors",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "hex key material in known-answer tests",
+   "files": {
+    "crypto/aes_kat.py": "# AES-128 test vector from RFC 3602\nsecret_key = \"2b7e151628aed2a6abf7158809cf4f3c\"\nplaintext = \"6bc1bee22e409f96e93d7e117393172a\"\n",
+    "vectors/hmac.py": "api_key = \"0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b\"\n"
+   }
+  },
+  {
+   "id": "sc006p1-pos-smoke-script-real-domain",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "same smoke file kind, real (non-reserved) domain account",
+   "files": {
+    "scripts/smoke_package.py": "import requests\nrequests.post(URL, json={\"email\": \"admin@acme-corp.com\", \"password\": \"Smoke-Pass-9z!\"})\n"
+   },
+   "expect": [
+    [
+     "scripts/smoke_package.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-pos-smoke-script-high-entropy-key",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "reserved-domain identity does not excuse a high-entropy API key",
+   "files": {
+    "scripts/smoke.py": "login(\"qa@example.com\")\napi_key = \"Zk8fQ2mX9vLp3RtYw7Bn5HcD1sJa6GeU\"\n"
+   },
+   "expect": [
+    [
+     "scripts/smoke.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-pos-smoke-script-provider-token",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "provider token in smoke script on reserved domain still flagged",
+   "files": {
+    "ci/smoke.py": "login(\"qa@example.com\")\nTOKEN = \"ghp_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7cF0hJ3kL6\"\n"
+   },
+   "expect": [
+    [
+     "ci/smoke.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-pos-real-looking-password-in-config",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "non-sample password under a plain key name",
+   "files": {
+    "settings.py": "DB_PASSWORD = \"Rx9!kLm2pQ\"\n"
+   },
+   "expect": [
+    [
+     "settings.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-pos-hex-secret-outside-vectors",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "hex api key in ordinary code with no vector context",
+   "files": {
+    "svc/client.py": "api_key = \"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b\"\n"
+   },
+   "expect": [
+    [
+     "svc/client.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006p1-pos-secret-key-not-name-suffix",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "secret_key (not *_name/_env) literal still flagged",
+   "files": {
+    "app.py": "secret_key = \"q7Hs!d02LmZx81vB\"\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     1
+    ]
+   ]
+  }
+ ]
+}
