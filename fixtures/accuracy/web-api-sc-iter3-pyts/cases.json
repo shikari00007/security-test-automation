@@ -1,0 +1,1290 @@
+{
+ "cases": [
+  {
+   "id": "pyts-002-ssti-pos-flask-name",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "template source built from a route argument and rendered with render_template_string",
+   "files": {
+    "app.py": "from flask import Flask, request, render_template_string\napp = Flask(__name__)\n\n@app.route('/hello')\ndef hello():\n    who = request.args.get('who', 'world')\n    page = '<h1>Hello ' + who + '</h1>'\n    return render_template_string(page)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-ssti-pos-errhandler",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "404 handler formats request.url into the template source (SSTI)",
+   "files": {
+    "app.py": "from flask import Flask, request, render_template_string\napp = Flask(__name__)\n\n@app.errorhandler(404)\ndef missing(e):\n    tpl = '<p>No such page: %s</p>' % request.url\n    return render_template_string(tpl), 404  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-ssti-neg-const-template",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "constant template, request data only passed as autoescaped context",
+   "files": {
+    "app.py": "from flask import Flask, request, render_template_string\napp = Flask(__name__)\n\n@app.route('/hello')\ndef hello():\n    who = request.args.get('who', 'world')\n    return render_template_string('<h1>Hello {{ who }}</h1>', who=who)\n"
+   }
+  },
+  {
+   "id": "pyts-002-ssti-neg-int-cast",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "only an int()-cast value is formatted into the template source",
+   "files": {
+    "app.py": "from flask import Flask, request, render_template_string\napp = Flask(__name__)\n\n@app.route('/n')\ndef page():\n    n = int(request.args.get('n', '1'))\n    src = '<p>Item {}</p>'.format(n)\n    return render_template_string(src)\n"
+   }
+  },
+  {
+   "id": "pyts-002-ssti-neg-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "user value is HTML-escaped before being placed in the string",
+   "files": {
+    "app.py": "from flask import Flask, request, render_template_string\nfrom markupsafe import escape\napp = Flask(__name__)\n\n@app.route('/hello')\ndef hello():\n    who = escape(request.args.get('who', 'world'))\n    return render_template_string('<h1>Hello ' + who + '</h1>')\n"
+   }
+  },
+  {
+   "id": "pyts-002-markup-pos-django",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "mark_safe on an f-string with a GET parameter",
+   "files": {
+    "views.py": "from django.shortcuts import render\nfrom django.utils.safestring import mark_safe\n\ndef search(request):\n    q = request.GET.get('q', '')\n    banner = mark_safe(f'<b>Results for {q}</b>')  # VULN-LINE\n    return render(request, 'search.html', {'banner': banner})\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-markup-pos-flask",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "Markup() wrapping route-handler data",
+   "files": {
+    "app.py": "from flask import Flask, render_template\nfrom markupsafe import Markup\napp = Flask(__name__)\n\n@app.route('/u/<name>')\ndef user(name):\n    badge = Markup('<span class=\"u\">' + name + '</span>')  # VULN-LINE\n    return render_template('user.html', badge=badge)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-markup-neg-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "mark_safe of a constant fragment",
+   "files": {
+    "views.py": "from django.utils.safestring import mark_safe\n\ndef icon(request):\n    return mark_safe('<i class=\"ok\"></i>')\n"
+   }
+  },
+  {
+   "id": "pyts-002-markup-neg-format-html",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "format_html escapes its arguments",
+   "files": {
+    "views.py": "from django.utils.html import format_html\n\ndef tag(request):\n    q = request.GET.get('q', '')\n    return format_html('<b>{}</b>', q)\n"
+   }
+  },
+  {
+   "id": "pyts-002-markup-neg-db-object",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "mark_safe of a database-loaded object, not request data",
+   "files": {
+    "views.py": "from django.shortcuts import get_object_or_404\nfrom django.utils.safestring import mark_safe\nfrom .models import Page\n\ndef show(request, slug):\n    page = get_object_or_404(Page, slug=slug)\n    body = mark_safe(page.body)\n    return body\n"
+   }
+  },
+  {
+   "id": "pyts-002-html-pos-flask-return",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "route returns an f-string HTML page containing a query parameter",
+   "files": {
+    "app.py": "from flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/greet')\ndef greet():\n    name = request.args.get('name', '')\n    return f'<html><body>Hi {name}</body></html>'  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-html-pos-httpresponse",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "HttpResponse with HTML concatenated from a POST value",
+   "files": {
+    "views.py": "from django.http import HttpResponse\n\ndef echo(request):\n    msg = request.POST['msg']\n    return HttpResponse('<p>You said: ' + msg + '</p>')  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-html-neg-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "value escaped with html.escape before output",
+   "files": {
+    "app.py": "import html\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/greet')\ndef greet():\n    name = html.escape(request.args.get('name', ''))\n    return f'<html><body>Hi {name}</body></html>'\n"
+   }
+  },
+  {
+   "id": "pyts-002-html-neg-json",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSON response, not HTML",
+   "files": {
+    "app.py": "from flask import Flask, request, jsonify\napp = Flask(__name__)\n\n@app.route('/greet')\ndef greet():\n    name = request.args.get('name', '')\n    return jsonify({'html': f'<b>{name}</b>'})\n"
+   }
+  },
+  {
+   "id": "pyts-002-html-neg-plain-content-type",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "explicit text/plain content type",
+   "files": {
+    "views.py": "from django.http import HttpResponse\n\ndef echo(request):\n    msg = request.POST['msg']\n    return HttpResponse('<p>' + msg + '</p>', content_type='text/plain')\n"
+   }
+  },
+  {
+   "id": "pyts-002-autoescape-pos-environment",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "Jinja Environment with autoescape disabled in a Flask app",
+   "files": {
+    "app.py": "import jinja2\nfrom flask import Flask\napp = Flask(__name__)\nenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=False)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-autoescape-pos-aiohttp",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "aiohttp_jinja2 setup with autoescape=False",
+   "files": {
+    "app.py": "import aiohttp_jinja2\nimport jinja2\nfrom aiohttp import web\n\ndef init():\n    app = web.Application()\n    aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader('t'), autoescape=False)  # VULN-LINE\n    return app\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-autoescape-neg-enabled",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "autoescape enabled",
+   "files": {
+    "app.py": "import jinja2\nfrom flask import Flask\napp = Flask(__name__)\nenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=True)\n"
+   }
+  },
+  {
+   "id": "pyts-002-autoescape-neg-select",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "select_autoescape for html/xml",
+   "files": {
+    "app.py": "import jinja2\nfrom flask import Flask\napp = Flask(__name__)\nenv = jinja2.Environment(loader=jinja2.FileSystemLoader('templates'), autoescape=jinja2.select_autoescape(['html']))\n"
+   }
+  },
+  {
+   "id": "pyts-002-autoescape-neg-cli-tool",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "plain-text code generator with no web framework",
+   "files": {
+    "gen.py": "import jinja2\n\ndef render_config(ctx):\n    env = jinja2.Environment(loader=jinja2.FileSystemLoader('tpl'), autoescape=False)\n    return env.get_template('nginx.conf.j2').render(**ctx)\n"
+   }
+  },
+  {
+   "id": "pyts-002-safefilter-pos-context-key",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "view passes request data under a key that the template renders with |safe",
+   "files": {
+    "views.py": "from django.shortcuts import render\n\ndef note(request):\n    body = request.GET.get('body', '')\n    return render(request, 'note.html', {'body': body})\n",
+    "templates/note.html": "<div class=\"note\">\n  {{ body|safe }}  <!-- VULN-LINE -->\n</div>\n"
+   },
+   "expect": [
+    [
+     "templates/note.html",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-safefilter-pos-search-term",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "search term echoed through |safe",
+   "files": {
+    "templates/results.html": "<h3>No results for {{ query|safe }}</h3>  <!-- VULN-LINE -->\n"
+   },
+   "expect": [
+    [
+     "templates/results.html",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-safefilter-neg-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "default auto-escaping",
+   "files": {
+    "templates/results.html": "<h3>No results for {{ query }}</h3>\n"
+   }
+  },
+  {
+   "id": "pyts-002-safefilter-neg-trusted-field",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "|safe on a server-side rendered field, not request-derived",
+   "files": {
+    "views.py": "from django.shortcuts import render\nfrom .models import Article\n\ndef article(request, slug):\n    a = Article.objects.get(slug=slug)\n    return render(request, 'article.html', {'rendered': a.rendered_html})\n",
+    "templates/article.html": "<article>{{ rendered|safe }}</article>\n"
+   }
+  },
+  {
+   "id": "pyts-002-safefilter-neg-docs-snippet",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "escaped documentation snippet inside <code>",
+   "files": {
+    "templates/help.html": "<pre><code>&lt;p&gt;{{query|safe}}&lt;/p&gt;</code></pre>\n"
+   }
+  },
+  {
+   "id": "pyts-005-shell-pos-system-fstring",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "os.system with an f-string built from a form field",
+   "files": {
+    "app.py": "import os\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/ping', methods=['POST'])\ndef ping():\n    host = request.form['host']\n    os.system(f'ping -c 1 {host}')  # VULN-LINE\n    return 'ok'\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-shell-pos-popen-var",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "subprocess shell=True on a command variable assembled from route data",
+   "files": {
+    "app.py": "import subprocess\nfrom fastapi import FastAPI\napp = FastAPI()\n\n@app.get('/dns/{domain}')\ndef dns(domain: str):\n    cmd = 'nslookup ' + domain\n    out = subprocess.run(cmd, shell=True, capture_output=True)  # VULN-LINE\n    return out.stdout\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-shell-pos-no-shell-string",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "string command built from request data passed to subprocess",
+   "files": {
+    "views.py": "import subprocess\n\ndef view(request):\n    target = request.POST.get('target')\n    subprocess.check_output('traceroute ' + target)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-shell-neg-list-args",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "argument vector without a shell",
+   "files": {
+    "app.py": "import subprocess\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/ping')\ndef ping():\n    host = request.args['host']\n    return subprocess.run(['ping', '-c', '1', host], capture_output=True).stdout\n"
+   }
+  },
+  {
+   "id": "pyts-005-shell-neg-shlex-quote",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "argument quoted with shlex.quote",
+   "files": {
+    "app.py": "import os, shlex\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/ls')\ndef ls():\n    d = shlex.quote(request.args.get('d', '.'))\n    os.system('ls -l ' + d)\n    return 'ok'\n"
+   }
+  },
+  {
+   "id": "pyts-005-shell-neg-not-request",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "helper that never sees request data (config constant)",
+   "files": {
+    "tasks.py": "import os\nBACKUP_DIR = '/srv/backup'\n\ndef nightly():\n    os.system('tar czf ' + BACKUP_DIR + '/n.tgz /srv/data')\n"
+   }
+  },
+  {
+   "id": "pyts-005-eval-pos-eval-param",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "eval of a request parameter",
+   "files": {
+    "views.py": "def calc(request):\n    expr = request.GET['expr']\n    return eval(expr)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-eval-pos-pickle",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "pickle.loads of request bytes",
+   "files": {
+    "app.py": "import pickle\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/load', methods=['POST'])\ndef load():\n    obj = pickle.loads(request.data)  # VULN-LINE\n    return str(obj)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-eval-pos-yaml-unsafe",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "yaml.load with the full Loader on an upload",
+   "files": {
+    "app.py": "import yaml\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/cfg', methods=['POST'])\ndef cfg():\n    data = yaml.load(request.files['f'].stream, Loader=yaml.Loader)  # VULN-LINE\n    return str(data)\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-eval-neg-literal-eval",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "ast.literal_eval and safe_load",
+   "files": {
+    "app.py": "import ast, yaml\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/p')\ndef parse():\n    a = ast.literal_eval(request.args['v'])\n    b = yaml.safe_load(request.data)\n    return str((a, b))\n"
+   }
+  },
+  {
+   "id": "pyts-005-eval-neg-constant-eval",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "eval of a constant expression and a validated dispatch",
+   "files": {
+    "app.py": "from flask import Flask, request\napp = Flask(__name__)\nOPS = {'add': lambda a, b: a + b}\n\n@app.route('/c')\ndef calc():\n    op = OPS[request.args.get('op', 'add')]\n    return str(op(1, 2) + eval('1 + 1'))\n"
+   }
+  },
+  {
+   "id": "pyts-005-eval-neg-json-loads",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "json.loads and pickle of a locally produced blob",
+   "files": {
+    "app.py": "import json, pickle\nfrom flask import Flask, request\napp = Flask(__name__)\nCACHE_BLOB = pickle.dumps({'a': 1})\n\n@app.route('/j', methods=['POST'])\ndef j():\n    d = json.loads(request.data)\n    return str((d, pickle.loads(CACHE_BLOB)))\n"
+   }
+  },
+  {
+   "id": "pyts-006-sql-pos-fstring",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "f-string SQL with a query parameter",
+   "files": {
+    "app.py": "import sqlite3\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/u')\ndef user():\n    name = request.args['name']\n    cur = sqlite3.connect('a.db').cursor()\n    cur.execute(f\"SELECT * FROM users WHERE name = '{name}'\")  # VULN-LINE\n    return str(cur.fetchall())\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-sql-pos-percent-var",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "SQL built with % in a variable and executed through engine.execute",
+   "files": {
+    "app.py": "from flask import Flask, request\nfrom sqlalchemy import create_engine\napp = Flask(__name__)\nengine = create_engine('sqlite://')\n\n@app.route('/s', methods=['POST'])\ndef search():\n    term = request.json['term']\n    q = \"SELECT * FROM customer WHERE username = '%s'\" % term  # VULN-LINE\n    return str(engine.execute(q).fetchall())\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-sql-pos-django-raw",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "Model.objects.raw with .format of a GET value",
+   "files": {
+    "views.py": "from .models import Person\n\ndef find(request):\n    last = request.GET['last']\n    return list(Person.objects.raw(\"SELECT * FROM app_person WHERE last_name = '{}'\".format(last)))  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-sql-pos-http-server",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "http.server handler concatenates a parsed parameter",
+   "files": {
+    "srv.py": "import http.server, sqlite3, urllib.parse\n\nclass H(http.server.BaseHTTPRequestHandler):\n    def do_GET(self):\n        q = urllib.parse.urlparse(self.path).query\n        params = dict(urllib.parse.parse_qsl(q))\n        cur = sqlite3.connect('a.db').cursor()\n        cur.execute(\"SELECT * FROM t WHERE id=\" + params['id'])  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "srv.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-sql-neg-bound",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "bound parameters",
+   "files": {
+    "app.py": "import sqlite3\nfrom flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/u')\ndef user():\n    name = request.args['name']\n    cur = sqlite3.connect('a.db').cursor()\n    cur.execute(\"SELECT * FROM users WHERE name = ?\", (name,))\n    return str(cur.fetchall())\n"
+   }
+  },
+  {
+   "id": "pyts-006-sql-neg-orm",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "ORM filter with request data and constant raw SQL",
+   "files": {
+    "views.py": "from .models import Person\n\ndef find(request):\n    last = request.GET['last']\n    a = list(Person.objects.filter(last_name=last))\n    b = list(Person.objects.raw(\"SELECT * FROM app_person WHERE active = 1\"))\n    return a + b\n"
+   }
+  },
+  {
+   "id": "pyts-006-sql-neg-noqa",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "author-acknowledged statement",
+   "files": {
+    "app.py": "from flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/c')\ndef count():\n    t = request.args['t']\n    q = f\"SELECT count(*) FROM {t}\"  # noqa: S608\n    return str(db.execute(q))\n"
+   }
+  },
+  {
+   "id": "pyts-006-param-pos-dao-percent",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "DAO helper formats its string argument into a quoted value",
+   "files": {
+    "dao.py": "class Student:\n    @staticmethod\n    async def create(conn, name: str):\n        q = (\"INSERT INTO students (name) \"\n             \"VALUES ('%(name)s')\" % {'name': name})\n        async with conn.cursor() as cur:\n            await cur.execute(q)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "dao.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-param-pos-fstring-like",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "helper concatenates its argument inside quotes",
+   "files": {
+    "repo.py": "def find_by_email(cur, email):\n    cur.execute(\"SELECT id FROM users WHERE email = '\" + email + \"'\")  # VULN-LINE\n    return cur.fetchone()\n"
+   },
+   "expect": [
+    [
+     "repo.py",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-angular-pos-bypass-param",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "bypassSecurityTrustHtml on a query parameter",
+   "files": {
+    "src/app/search.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-search', templateUrl: './search.component.html' })\nexport class SearchComponent {\n  searchValue: any\n  constructor (private sanitizer: DomSanitizer) {}\n  show (queryParam: string) {\n    this.searchValue = this.sanitizer.bypassSecurityTrustHtml(queryParam)  // VULN-LINE\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "src/app/search.component.ts",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-angular-pos-bypass-member",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "bypassSecurityTrustHtml on a field of server data",
+   "files": {
+    "src/app/list.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-list', templateUrl: './list.component.html' })\nexport class ListComponent {\n  rows: any[] = []\n  constructor (private sanitizer: DomSanitizer) {}\n  trust (items: any[]) {\n    for (const row of items) {\n      row.comment = this.sanitizer.bypassSecurityTrustHtml(row.comment)  // VULN-LINE\n    }\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "src/app/list.component.ts",
+     10
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-angular-neg-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "bypassSecurityTrustHtml on constant markup",
+   "files": {
+    "src/app/icon.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-icon', template: '<span [innerHTML]=\"icon\"></span>' })\nexport class IconComponent {\n  icon: any\n  constructor (private sanitizer: DomSanitizer) {\n    this.icon = this.sanitizer.bypassSecurityTrustHtml('<svg width=\"1\"></svg>')\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pyts-002-angular-neg-const-binding",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "trusted value is a const bound to a literal",
+   "files": {
+    "src/app/logo.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\nconst LOGO = '<svg width=\"2\"></svg>'\n\n@Component({ selector: 'app-logo', template: '' })\nexport class LogoComponent {\n  logo: any\n  constructor (private sanitizer: DomSanitizer) {\n    this.logo = this.sanitizer.bypassSecurityTrustHtml(LOGO)\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pyts-002-angular-neg-sanitized",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "DOMPurify output and translated text are trusted",
+   "files": {
+    "src/app/msg.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\nimport DOMPurify from 'dompurify'\n\n@Component({ selector: 'app-msg', template: '' })\nexport class MsgComponent {\n  html: any\n  constructor (private sanitizer: DomSanitizer, private translate: any) {}\n  render (raw: string) {\n    this.html = this.sanitizer.bypassSecurityTrustHtml(DOMPurify.sanitize(raw))\n    this.html = this.sanitizer.bypassSecurityTrustHtml(this.translate.instant('WELCOME'))\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pyts-002-innerhtml-pos-trusted-component",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "[innerHTML] bound to data the component marks trusted",
+   "files": {
+    "src/app/card/card.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-card', templateUrl: './card.component.html' })\nexport class CardComponent {\n  body: any\n  constructor (private sanitizer: DomSanitizer) {}\n  set (v: string) {\n    this.body = this.sanitizer.bypassSecurityTrustHtml('<p>' + 'x' + '</p>')\n  }\n}\n",
+    "src/app/card/card.component.html": "<div class=\"card\">\n  <p [innerHTML]=\"body\"></p>  <!-- VULN-LINE -->\n</div>\n"
+   },
+   "expect": [
+    [
+     "src/app/card/card.component.html",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-innerhtml-neg-default-sanitised",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "[innerHTML] with Angular's built-in sanitiser (no bypass in component)",
+   "files": {
+    "src/app/note/note.component.ts": "import { Component } from '@angular/core'\n\n@Component({ selector: 'app-note', templateUrl: './note.component.html' })\nexport class NoteComponent {\n  body = ''\n}\n",
+    "src/app/note/note.component.html": "<p [innerHTML]=\"body\"></p>\n"
+   }
+  },
+  {
+   "id": "pyts-002-innerhtml-neg-literal-binding",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "[innerHTML] bound to a string literal",
+   "files": {
+    "src/app/hint/hint.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-hint', templateUrl: './hint.component.html' })\nexport class HintComponent {\n  constructor (private sanitizer: DomSanitizer) {}\n  x () { return this.sanitizer.bypassSecurityTrustHtml('<i>x</i>') }\n}\n",
+    "src/app/hint/hint.component.html": "<p [innerHTML]=\"'<b>hint</b>'\"></p>\n"
+   }
+  },
+  {
+   "id": "pyts-002-innerhtml-neg-translated",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "[innerHTML] with a translate pipe",
+   "files": {
+    "src/app/t/t.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-t', templateUrl: './t.component.html' })\nexport class TComponent {\n  constructor (private sanitizer: DomSanitizer) {}\n  x () { return this.sanitizer.bypassSecurityTrustHtml('<i>x</i>') }\n}\n",
+    "src/app/t/t.component.html": "<p [innerHTML]=\"'GREETING' | translate\"></p>\n"
+   }
+  },
+  {
+   "id": "pyts-002-resend-pos-template-literal",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "res.send with a template literal HTML page containing req.query",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/hi', (req, res) => {\n  const name = req.query.name\n  res.send(`<h1>Hello ${name}</h1>`)  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-resend-pos-concat",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "res.write of concatenated HTML with a path parameter",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/u/:id', function (req, res) {\n  res.write('<p>user ' + req.params.id + '</p>')  // VULN-LINE\n  res.end()\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-resend-neg-escaped",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "value escaped before sending",
+   "files": {
+    "server.js": "const express = require('express')\nconst escapeHtml = require('escape-html')\nconst app = express()\n\napp.get('/hi', (req, res) => {\n  res.send(`<h1>Hello ${escapeHtml(req.query.name)}</h1>`)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-resend-neg-json-and-text",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "JSON body and plain-text content type",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/a', (req, res) => {\n  res.json({ html: '<b>' + req.query.x + '</b>' })\n})\napp.get('/b', (req, res) => {\n  res.set('Content-Type', 'text/plain')\n  res.send('<b>' + req.query.x + '</b>')\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-resend-neg-constant-and-number",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "constant markup and numeric-cast value",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/a', (req, res) => {\n  res.send('<h1>Welcome</h1>')\n})\napp.get('/b', (req, res) => {\n  const n = Number(req.query.n)\n  res.send(`<p>${n}</p>`)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-ssti-js-pos-ejs",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "ejs.render of a request-controlled template",
+   "files": {
+    "server.js": "const express = require('express')\nconst ejs = require('ejs')\nconst app = express()\n\napp.post('/preview', (req, res) => {\n  const tpl = req.body.template\n  res.send(ejs.render(tpl))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-ssti-js-pos-pug",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "pug.compile of query data",
+   "files": {
+    "server.js": "const express = require('express')\nconst pug = require('pug')\nconst app = express()\n\napp.get('/p', (req, res) => {\n  const fn = pug.compile('h1 ' + req.query.title)  // VULN-LINE\n  res.send(fn())\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-ssti-js-neg-constant",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "constant template with data context",
+   "files": {
+    "server.js": "const express = require('express')\nconst ejs = require('ejs')\nconst app = express()\n\napp.get('/p', (req, res) => {\n  res.send(ejs.render('<h1><%= title %></h1>', { title: req.query.title }))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-ssti-js-neg-file-template",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "template loaded from disk, request only in the data",
+   "files": {
+    "server.js": "const express = require('express')\nconst pug = require('pug')\nconst fs = require('fs')\nconst app = express()\nconst src = fs.readFileSync('views/page.pug', 'utf8')\n\napp.get('/p', (req, res) => {\n  const fn = pug.compile(src)\n  res.send(fn({ title: req.query.title }))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-ssti-js-neg-number",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "numeric value only",
+   "files": {
+    "server.js": "const express = require('express')\nconst ejs = require('ejs')\nconst app = express()\n\napp.get('/p', (req, res) => {\n  const n = parseInt(req.query.n, 10)\n  res.send(ejs.render('<p>' + n + '</p>'))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-002-jquery-pos-location",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "jQuery .html() of location.hash",
+   "files": {
+    "public/app.js": "function show() {\n  const tag = location.hash.slice(1)\n  $('#out').html('<b>' + tag + '</b>')  // VULN-LINE\n}\n"
+   },
+   "expect": [
+    [
+     "public/app.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-jquery-pos-query-param",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "jQuery .append() of a URL search parameter",
+   "files": {
+    "public/app.js": "function banner() {\n  const q = new URLSearchParams(window.location.search).get('msg')\n  $('#banner').append('<div>' + location.search + '</div>')  // VULN-LINE\n}\n"
+   },
+   "expect": [
+    [
+     "public/app.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-jquery-neg-text",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "value inserted with .text()",
+   "files": {
+    "public/app.js": "function show() {\n  const tag = location.hash.slice(1)\n  $('#out').text(tag)\n}\n"
+   }
+  },
+  {
+   "id": "pyts-002-jquery-neg-encoded",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "value encoded before insertion",
+   "files": {
+    "public/app.js": "function show() {\n  const tag = encodeURIComponent(location.hash.slice(1))\n  $('#out').html('<a href=\"/t/' + tag + '\">t</a>')\n}\n"
+   }
+  },
+  {
+   "id": "pyts-002-jquery-neg-constant",
+   "rule": "SEC-WEB-002",
+   "kind": "negative",
+   "note": "constant markup and server-rendered fragment from a literal table",
+   "files": {
+    "public/app.js": "const TPL = { ok: '<b>ok</b>' }\nfunction show(kind) {\n  $('#out').html('<i>done</i>')\n  $('#out2').html(TPL.ok)\n}\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-exec-pos-template",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "exec with a template literal built from req.body",
+   "files": {
+    "server.js": "const { exec } = require('child_process')\nconst express = require('express')\nconst app = express()\n\napp.post('/ping', (req, res) => {\n  const host = req.body.host\n  exec(`ping -c 1 ${host}`, (e, out) => res.send(out))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-exec-pos-variable",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "execSync of a command variable derived from a query parameter",
+   "files": {
+    "server.js": "const cp = require('child_process')\nconst express = require('express')\nconst app = express()\n\napp.get('/zip', (req, res) => {\n  const cmd = 'zip -r out.zip ' + req.query.dir\n  res.send(cp.execSync(cmd))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-exec-pos-spawn-shell",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "spawn with shell:true and request data",
+   "files": {
+    "server.js": "const { spawn } = require('child_process')\nconst express = require('express')\nconst app = express()\n\napp.get('/l', (req, res) => {\n  const p = spawn(req.query.cmd, [], { shell: true })  // VULN-LINE\n  p.stdout.pipe(res)\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-exec-neg-execfile",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "execFile with an argument vector",
+   "files": {
+    "server.js": "const { execFile } = require('child_process')\nconst express = require('express')\nconst app = express()\n\napp.get('/p', (req, res) => {\n  execFile('ping', ['-c', '1', req.query.host], (e, out) => res.send(out))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-exec-neg-regex-exec",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "RegExp.exec on request data",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\nconst re = /^(\\d+)-(\\d+)$/\n\napp.get('/r', (req, res) => {\n  const m = re.exec(req.query.range)\n  res.json(m)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-eval-pos-eval",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "eval of req.body through a local variable",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.post('/calc', (req, res) => {\n  const expr = req.body.expression\n  res.json({ result: eval(expr) })  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-eval-pos-newfunction",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "new Function built from a query parameter",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/f', (req, res) => {\n  const body = 'return ' + req.query.f\n  const fn = new Function('x', body)  // VULN-LINE\n  res.json(fn(1))\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-eval-pos-mathjs",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "math.eval on a request value",
+   "files": {
+    "server.js": "const express = require('express')\nconst math = require('mathjs')\nconst app = express()\n\napp.post('/m', (req, res) => {\n  const eqn = req.body.eqn\n  res.json(math.eval(eqn))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-eval-neg-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "eval of a constant and JSON.parse",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.post('/j', (req, res) => {\n  const v = JSON.parse(req.body.json)\n  res.json(eval('1 + 1') + v)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-eval-neg-allowlist",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "dispatch through a literal table",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\nconst OPS = { inc: (x) => x + 1, dec: (x) => x - 1 }\n\napp.get('/o', (req, res) => {\n  const f = OPS[req.query.op]\n  res.json(f ? f(1) : null)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-sql-pos-template",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "template literal SQL with req.body value",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.post('/login', async (req, res) => {\n  const user = req.body.user\n  const rows = await db.query(`SELECT * FROM users WHERE name = '${user}'`)  // VULN-LINE\n  res.json(rows)\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-js-sql-pos-multiline",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "multi-line template literal with a path parameter on a later line, executed via a variable",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/o/:id', async (req, res) => {\n  const sql = `SELECT * FROM orders\n    WHERE id = ${req.params.id}`\n  const rows = await pool.query(sql)  // VULN-LINE\n  res.json(rows)\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-js-sql-pos-nest",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "NestJS controller interpolates a @Query value",
+   "files": {
+    "src/users.controller.ts": "import { Controller, Get, Query } from '@nestjs/common'\n\n@Controller('users')\nexport class UsersController {\n  constructor (private readonly connection: any) {}\n\n  @Get()\n  async find (@Query('name') name: string) {\n    return this.connection.query(`SELECT * FROM users WHERE name = '${name}'`)  // VULN-LINE\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "src/users.controller.ts",
+     9
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-js-sql-neg-placeholder",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "placeholders with a parameter array",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.post('/login', async (req, res) => {\n  const rows = await db.query('SELECT * FROM users WHERE name = $1', [req.body.user])\n  res.json(rows)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-where-pos-concat",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "Mongo $where built by concatenation from a route parameter",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/r/:id', (req, res) => {\n  const id = req.params.id\n  db.reviews.find({ $where: 'this.product == ' + id }).then((r) => res.json(r))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-js-where-pos-template",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "$where template string with a request value",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/o', (req, res) => {\n  const oid = String(req.query.orderId)\n  db.orders.find({ $where: `this.orderId === '${oid}'` }).then((o) => res.json(o))  // VULN-LINE\n})\n"
+   },
+   "expect": [
+    [
+     "server.js",
+     6
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-js-where-neg-constant",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "constant $where",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/o', (req, res) => {\n  db.orders.find({ $where: 'this.qty > 1' }).then((o) => res.json(o))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-where-neg-stripped",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "id stripped to word characters",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/o', (req, res) => {\n  const id = String(req.query.id).replace(/[^\\w-]+/g, '')\n  db.orders.find({ $where: `this.orderId === '${id}'` }).then((o) => res.json(o))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-where-neg-field-match",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "plain field match with request value (no JS expression)",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/o', (req, res) => {\n  db.orders.find({ orderId: req.query.id }).then((o) => res.json(o))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-lambda-pos-event",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "AWS Lambda handler evals an event field",
+   "files": {
+    "handler.js": "exports.handler = async (event) => {\n  const code = event.body\n  return eval(code)  // VULN-LINE\n}\n"
+   },
+   "expect": [
+    [
+     "handler.js",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-py-lambda-pos-event",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "Python Lambda handler runs a shell command from the event",
+   "files": {
+    "handler.py": "import os\n\ndef lambda_handler(event, context):\n    host = event['queryStringParameters']['host']\n    os.system('ping -c 1 ' + host)  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "handler.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-shell-neg-lookup",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "command picked from a literal table by request key",
+   "files": {
+    "app.py": "import os\nfrom flask import Flask, request\napp = Flask(__name__)\nCMDS = {'status': 'systemctl status app', 'restart': 'systemctl restart app'}\n\n@app.route('/svc')\ndef svc():\n    os.system(CMDS[request.args.get('action', 'status')])\n    return 'ok'\n"
+   }
+  },
+  {
+   "id": "pyts-005-py-lambda-neg-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "Lambda handler: constant command and argv list",
+   "files": {
+    "handler.py": "import os, subprocess\n\ndef lambda_handler(event, context):\n    os.system('uptime')\n    subprocess.run(['echo', str(int(event['n']))])\n"
+   }
+  },
+  {
+   "id": "pyts-005-py-fastapi-neg-depends",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "FastAPI int path param and Depends value only reach an argv list",
+   "files": {
+    "app.py": "import os, subprocess\nfrom fastapi import FastAPI, Depends\napp = FastAPI()\n\ndef get_dir():\n    return '/srv'\n\n@app.get('/n/{n}')\ndef run(n: int, base: str = Depends(get_dir)):\n    subprocess.run(['ls', '-l', base, str(n)])\n    os.system('uptime')\n    return 'ok'\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-nest-neg-number",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "Nest @Param typed as number goes to execFile",
+   "files": {
+    "src/a.controller.ts": "import { Controller, Get, Param } from '@nestjs/common'\nimport { execFile } from 'child_process'\n\n@Controller('a')\nexport class AController {\n  @Get(':n')\n  run (@Param('n') n: number) {\n    execFile('echo', [String(n)])\n  }\n}\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-exec-neg-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "constant command strings",
+   "files": {
+    "server.js": "const { exec } = require('child_process')\nconst express = require('express')\nconst app = express()\nconst DIR = '/var/log'\n\napp.get('/t', (req, res) => {\n  exec('uptime', (e, out) => res.send(out))\n  exec(`ls ${DIR}`, (e, out) => res.send(out))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-eval-neg-new-function-const",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "new Function over literal source and an unrelated request read",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/n', (req, res) => {\n  const add = new Function('a', 'b', 'return a + b')\n  res.json(add(Number(req.query.a), Number(req.query.b)))\n})\n"
+   }
+  },
+  {
+   "id": "pyts-005-js-lambda-neg-constant",
+   "rule": "SEC-WEB-005",
+   "kind": "negative",
+   "note": "handler evaluating only constants",
+   "files": {
+    "handler.js": "exports.handler = async (event) => {\n  const n = Number(event.n)\n  return n + eval('1 + 1')\n}\n"
+   }
+  },
+  {
+   "id": "pyts-006-sql-neg-const-interpolation",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "module constant interpolated into a statement",
+   "files": {
+    "repo.py": "TABLE = 'users'\n\ndef count_rows(cur):\n    cur.execute(f\"SELECT count(*) FROM {TABLE} WHERE active = 1\")\n    return cur.fetchone()\n"
+   }
+  },
+  {
+   "id": "pyts-006-param-neg-placeholders",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "helper binds its arguments",
+   "files": {
+    "repo.py": "def find(cur, name, email):\n    cur.execute(\"SELECT id FROM users WHERE name = %s AND email = %s\", (name, email))\n    return cur.fetchone()\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-sql-neg-const-table",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "constant table interpolated",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\nconst T = 'users'\n\napp.get('/u', async (req, res) => {\n  const rows = await db.query(`SELECT * FROM ${T} WHERE active = 1`)\n  res.json(rows)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-param-neg-constant-clause",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "helper composes only constant clauses",
+   "files": {
+    "repo.py": "def purge(cur):\n    where = \"active = 0\"\n    cur.execute(\"DELETE FROM sessions WHERE \" + where)\n"
+   }
+  },
+  {
+   "id": "pyts-006-js-sql-neg-builder",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "query builder with bound value",
+   "files": {
+    "server.js": "const express = require('express')\nconst app = express()\n\napp.get('/u', async (req, res) => {\n  const rows = await knex('users').where('name', req.query.name).select('id')\n  res.json(rows)\n})\n"
+   }
+  },
+  {
+   "id": "pyts-006-sql-pos-dict-format",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "dict-style % formatting of a JSON field into a statement",
+   "files": {
+    "app.py": "from flask import Flask, request\napp = Flask(__name__)\n\n@app.route('/s', methods=['POST'])\ndef search():\n    body = request.get_json()\n    cur = conn.cursor()\n    cur.execute(\"SELECT * FROM users WHERE name = '%(n)s'\" % {'n': body['name']})  # VULN-LINE\n    return str(cur.fetchall())\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-sql-pos-extra-where",
+   "rule": "SEC-WEB-006",
+   "kind": "positive",
+   "note": "Django QuerySet.extra(where=...) with a formatted GET value",
+   "files": {
+    "views.py": "from .models import Person\n\ndef find(request):\n    last = request.GET['last']\n    return list(Person.objects.extra(where=[\"last_name = '%s'\" % last]))  # VULN-LINE\n"
+   },
+   "expect": [
+    [
+     "views.py",
+     5
+    ]
+   ]
+  },
+  {
+   "id": "pyts-002-innerhtml-pos-outerhtml-member",
+   "rule": "SEC-WEB-002",
+   "kind": "positive",
+   "note": "[outerHTML] bound to a member of data the component marks trusted",
+   "files": {
+    "src/app/row/row.component.ts": "import { Component } from '@angular/core'\nimport { DomSanitizer } from '@angular/platform-browser'\n\n@Component({ selector: 'app-row', templateUrl: './row.component.html' })\nexport class RowComponent {\n  row: any\n  constructor (private sanitizer: DomSanitizer) {}\n  load (r: any) {\n    this.row = this.sanitizer.bypassSecurityTrustHtml(r.summary)  // VULN-LINE\n  }\n}\n",
+    "src/app/row/row.component.html": "<section>\n  <div [innerHTML]=\"row.summary\"></div>  <!-- VULN-LINE -->\n</section>\n"
+   },
+   "expect": [
+    [
+     "src/app/row/row.component.ts",
+     9
+    ],
+    [
+     "src/app/row/row.component.html",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-js-nest-pos-body",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "Nest @Body value reaches exec",
+   "files": {
+    "src/b.controller.ts": "import { Body, Controller, Post } from '@nestjs/common'\nimport { exec } from 'child_process'\n\n@Controller('b')\nexport class BController {\n  @Post()\n  run (@Body() dto: any) {\n    exec('convert ' + dto.file + ' out.png')  // VULN-LINE\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "src/b.controller.ts",
+     8
+    ]
+   ]
+  },
+  {
+   "id": "pyts-005-py-fastapi-pos-path",
+   "rule": "SEC-WEB-005",
+   "kind": "positive",
+   "note": "FastAPI str path parameter reaches os.system",
+   "files": {
+    "app.py": "import os\nfrom fastapi import FastAPI\napp = FastAPI()\n\n@app.get('/run/{name}')\ndef run(name: str):\n    os.system('run-' + name)  # VULN-LINE\n    return 'ok'\n"
+   },
+   "expect": [
+    [
+     "app.py",
+     7
+    ]
+   ]
+  },
+  {
+   "id": "pyts-006-param-neg-qmark",
+   "rule": "SEC-WEB-006",
+   "kind": "negative",
+   "note": "helper binds with qmark placeholders",
+   "files": {
+    "repo.py": "def update(cur, a, b):\n    cur.execute(\"UPDATE t SET a = ? WHERE b = ?\", (a, b))\n"
+   }
+  }
+ ]
+}

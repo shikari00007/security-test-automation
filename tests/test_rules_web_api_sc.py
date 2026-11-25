@@ -123,3 +123,19 @@ class MetadataTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PhpIdentifierInterpolationWiring(unittest.TestCase):
+    """php_line_dynamic must be wired into SEC-WEB-006: table-name helper interpolation is quiet, request data is not."""
+    def _hits(self, code):
+        import tempfile, pathlib
+        from security_runner.regression import observations_for
+        with tempfile.TemporaryDirectory() as t:
+            (pathlib.Path(t) / "a.php").write_text(code)
+            return observations_for("SEC-WEB-006", t)
+
+    def test_identifier_helper_not_flagged(self):
+        self.assertEqual(self._hits('<?php\n$r = $db->query("SELECT id FROM " . $this->table . " WHERE active = 1");\n'), [])
+
+    def test_request_value_still_flagged(self):
+        self.assertTrue(self._hits('<?php\n$r = mysqli_query($c, "SELECT * FROM users WHERE id = " . $_GET["id"]);\n'))

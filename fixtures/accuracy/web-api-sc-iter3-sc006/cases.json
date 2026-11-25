@@ -1,0 +1,843 @@
+{
+ "cases": [
+  {
+   "id": "sc006-i3-neg-cjk-yaml",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "CJK UI text under a password key in a yaml catalog",
+   "files": {
+    "config/messages.yml": "login:\n  password_hint: 密碼請輸入八個字元以上\n  forgot_password: 忘記密碼了嗎？重設\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-cyrillic-json",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "Cyrillic label for a secret field",
+   "files": {
+    "web/strings.json": "{\n  \"api_key_help\": \"Ключ доступа выдаётся администратором\",\n  \"client_secret\": \"Секретный_ключ9\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-arabic-ini",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "Arabic text for a password prompt",
+   "files": {
+    "app/ui.ini": "[ui]\npassword_label = كلمةالمرور١٢٣\nsecret_hint = رمزسري٤٥٦٧٨\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-latin-accent-password",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "accented Latin password is still a credential",
+   "files": {
+    "config/app.yml": "db:\n  password: Pässw0rd!2024xQ\n"
+   },
+   "expect": [
+    [
+     "config/app.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-ascii-password-yaml",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "random ASCII password in yaml",
+   "files": {
+    "config/app.yml": "db:\n  password: Zq8!vK2mPx4Lr7\n"
+   },
+   "expect": [
+    [
+     "config/app.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-locale-file-de",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "unquoted yaml value in a de-DE.yaml translation file",
+   "files": {
+    "i18n-data/de-DE.yaml": "password_confirmation: Passwort2neu\nsecret_label: Geheimnis3x\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-locale-file-zh",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "translation file named zh-CN.yml outside a locale dir",
+   "files": {
+    "strings/zh-CN.yml": "password: 密码强度2级\napi_secret: 接口密钥3号\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-locale-file-es",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "es-419 translation file",
+   "files": {
+    "data/es-419.yml": "reset_password_token: Contrasena1x\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-nonlocale-yml-lookalike",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "ci-prod.yml (not a locale name) with a real password",
+   "files": {
+    "deploy/ci-prod.yml": "DEPLOY_PASSWORD: Rq7!xK2mPz4Lv\n"
+   },
+   "expect": [
+    [
+     "deploy/ci-prod.yml",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-locale-file-token",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "a locale-named file that holds a token-shaped value is still flagged",
+   "files": {
+    "config/locales/en-US.yml": "api_key: 9fK2mQx7LpR4tZ8vN3bY6wHcD1\n"
+   },
+   "expect": [
+    [
+     "config/locales/en-US.yml",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-dep-catalog",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "package.json dependency whose name has a credential word, catalog protocol",
+   "files": {
+    "package.json": "{\n  \"devDependencies\": {\n    \"secretlint\": \"catalog:\",\n    \"password-strength\": \"workspace:*\"\n  }\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-dep-semver",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "semver range for secret-named packages",
+   "files": {
+    "package.json": "{\n  \"dependencies\": {\n    \"keytar-secret-store\": \"^2.14.0\",\n    \"auth-token-utils\": \"~1.2.3\"\n  }\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-dep-link",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "link/file protocol for a token helper",
+   "files": {
+    "package.json": "{\n  \"dependencies\": {\n    \"access-token-helper\": \"file:../access-token-helper\",\n    \"apikey-client\": \"link:./libs/apikey\"\n  }\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-manifest-real-key",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "a real-looking key in a json config is still flagged",
+   "files": {
+    "config.json": "{\n  \"apiKey\": \"a1b2c3d4e5f6g7h8\"\n}\n"
+   },
+   "expect": [
+    [
+     "config.json",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-manifest-password",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "real password in package.json config block",
+   "files": {
+    "package.json": "{\n  \"config\": {\n    \"password\": \"Zq8!vK2mPx4Lr7\"\n  }\n}\n"
+   },
+   "expect": [
+    [
+     "package.json",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-charset-py",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "alphabet constant used to generate keys",
+   "files": {
+    "gen.py": "SECRET_KEY_CHARSET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-charset-js",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "password alphabet constant",
+   "files": {
+    "gen.js": "const passwordAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#';\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-charset-go",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "token charset in go",
+   "files": {
+    "gen.go": "const secretCharset = \"0123456789abcdefghijklmnopqrstuv\"\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-typed-provider-tokens",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "provider-shaped placeholders typed by hand (ascending runs) in a redaction list",
+   "files": {
+    "cfg/lint.json": "{\n  \"allow\": [\n    \"ghp_0123456789abcdefABCDEF0123456789abcd\",\n    \"sk_live_abcdefghijklmnopqrstuvwxyz0123456789ABCDEF\",\n    \"xoxb-1234567890-abcdefFGHIJK\"\n  ]\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-real-provider-tokens",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "random-bodied provider tokens stay flagged",
+   "files": {
+    "src/gh.js": "const t = 'ghp_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7cF0hJ3kLm';\nconst s = 'xoxb-2194837561-8472910365-aB3dE6gH9jK2mN5pQ8sT1vW4';\n"
+   },
+   "expect": [
+    [
+     "src/gh.js",
+     1
+    ],
+    [
+     "src/gh.js",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-real-stripe-live",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "stripe live key",
+   "files": {
+    "billing.py": "STRIPE = 'sk_live_4eC39HqLyjWDarjtT1zdp7dc'\n"
+   },
+   "expect": [
+    [
+     "billing.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-short-seq-in-secret",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "a password with a short ascending run (<8) is still flagged",
+   "files": {
+    "a.py": "DB_PASSWORD = 'abcd1234Zq8vK2mPx4'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-algo-hashing",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "algorithm name under a secret-ish key",
+   "files": {
+    "auth.py": "PASSWORD_HASHING_SCHEME = 'pbkdf2-sha256'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-algo-cipher",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "cipher name",
+   "files": {
+    "auth.js": "const secretCipher = 'aes-256-gcm';\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-algo-jwt",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "jwt signing algorithm",
+   "files": {
+    "conf.yml": "jwt:\n  secret_algo: HS256\n  api_key_signing: hmac-sha512\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-algo-lookalike-secret",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "random value beside an algorithm setting is flagged",
+   "files": {
+    "conf.yml": "jwt:\n  secret: aB3dE6gH9jK2mN5pQ8sT1v\n  alg: HS256\n"
+   },
+   "expect": [
+    [
+     "conf.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-path-relative",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "path to a secret file",
+   "files": {
+    "app.py": "SECRET_KEY_FILE_DEFAULT = 'config/secrets/app.yml'\nTLS_PRIVATE_KEY = 'certs/server/tls.key'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-path-filename",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "bare filename",
+   "files": {
+    "a.py": "PASSWORD_STORE = 'db_password.txt'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-path-ts",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "path in ts",
+   "files": {
+    "a.ts": "const apiKeyLocation = 'secrets/dev/api_key.json';\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-path-like-aws-secret",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "AWS-secret-shaped value containing slashes is still flagged",
+   "files": {
+    "aws.ini": "[default]\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYzzzzzzzzzzzz\n"
+   },
+   "expect": [
+    [
+     "aws.ini",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-path-like-b64",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "mixed-case slashed random token",
+   "files": {
+    "a.py": "API_KEY = 'xK9mQ2/vL7pRz5/Tw8NbY4Hc'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-ref-vault",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "reference to a vault path",
+   "files": {
+    "app.yml": "db:\n  password: \"vault:secret/data/prod/db#password\"\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-ref-op",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "1Password reference",
+   "files": {
+    "app.yml": "api:\n  api_key: \"op://prod/stripe/credential\"\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-ref-arn",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "secrets manager ARN",
+   "files": {
+    "a.py": "DB_PASSWORD_SECRET = 'arn:aws:secretsmanager:us-east-1:123456789012:secret:db-pw-AbC1'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-ref-lookalike",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "value that merely starts like a ref word but is a password",
+   "files": {
+    "app.yml": "db:\n  password: \"Vault9!kL2mXq7Tz\"\n"
+   },
+   "expect": [
+    [
+     "app.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-ref-plain",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "plain password next to a vault reference",
+   "files": {
+    "app.yml": "a:\n  password: \"vault:secret/x\"\n  admin_password: \"Zq8!vK2mPx4Lr7\"\n"
+   },
+   "expect": [
+    [
+     "app.yml",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-scope-go",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "oauth scope constants",
+   "files": {
+    "scope.go": "const (\n\tScopeReadAdmin Token = \"read:admin\"\n\tScopeWriteRepo AccessTokenScope = \"write:repository\"\n)\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-scope-ts",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "permission strings",
+   "files": {
+    "perm.ts": "export const API_KEY_SCOPE_READ = 'read:keys';\nexport const secretScope = 'admin:secrets_all';\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-scope-py",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "scope identifiers in python",
+   "files": {
+    "perm.py": "ACCESS_TOKEN_SCOPE = 'user:email'\nTOKEN_ADMIN = 'admin:org_hook'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-scope-lookalike",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "mixed value with colon is a credential",
+   "files": {
+    "a.py": "AUTH_TOKEN = 'user:Zq8vK2mPx4Lr7'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-scope-pass",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "password with digits and colon",
+   "files": {
+    "a.py": "DB_PASSWORD = 'ad:min4Zq8vK2mPx'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-ident-flag",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "feature flag / identifier with a credential word",
+   "files": {
+    "flags.yml": "features:\n  password_login: passwordless-login-v2\n  secret_scanning: secret-scan-beta2\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-ident-const",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "constant naming a scheme",
+   "files": {
+    "A.php": "<?php\nclass A { const SCHEME_AMAZONS3_ACCESSKEY = 'amazons3_accesskey'; }\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-ident-snake",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "snake identifier",
+   "files": {
+    "a.rb": "API_KEY_STRATEGY = 'header_api_key2'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-ident-lookalike",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "lowercase snake password with long digit run stays flagged",
+   "files": {
+    "a.py": "DB_PASSWORD = 'db_pass_20241107'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-ident-upper",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "mixed case token",
+   "files": {
+    "a.py": "API_KEY = 'Header-Api-9fK2mQ'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-hash-json",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "password hash blob",
+   "files": {
+    "defs.json": "{\n  \"users\": [{\"name\": \"u\", \"password_hash\": \"dGyBJ4lTcbb52/dxaJHk+M03ruvCItoyRUIlu/v6gng2E19y\"}]\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-hash-yaml",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "checksum / digest keys",
+   "files": {
+    "meta.yml": "api_key_checksum: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b\nsecret_digest: 2c26b46b68ffc68ff99b453c1d304134\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-hash-py",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "fingerprint constant",
+   "files": {
+    "a.py": "API_KEY_FINGERPRINT = 'ab12cd34ef56ab78cd90ef12ab34cd56'\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-hash-as-password",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "same blob under a plain password key is flagged",
+   "files": {
+    "defs.json": "{\n  \"user\": {\"password\": \"dGyBJ4lTcbb52/dxaJHk+M03ruvCItoyRUIlu/v6gng2E19y\"}\n}\n"
+   },
+   "expect": [
+    [
+     "defs.json",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-hash-neighbour",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "real password with hash key next to it",
+   "files": {
+    "c.yml": "password_hash: 9f86d081884c7d659a2feaa0c55ad015\npassword: Zq8!vK2mPx4Lr7\n"
+   },
+   "expect": [
+    [
+     "c.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-sample-json-hunter",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "documented API request sample with example.com user",
+   "files": {
+    "dev/api/requests/user-update.json": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"hunter2000\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-sample-json-seed",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "seed data sample with reserved-domain account",
+   "files": {
+    "seed/users.json": "{\n  \"email\": \"admin@example.org\",\n  \"password\": \"Adm1nPass2024\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-sample-yaml-test-tld",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "synthetic .test account",
+   "files": {
+    "data/account.yml": "email: bob@corp.test\npassword: Bob!Pass2024\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-sample-real-domain",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "same shape with a real-looking domain",
+   "files": {
+    "seed/users.json": "{\n  \"email\": \"admin@acme-corp.io\",\n  \"password\": \"Adm1nPass2024!x\"\n}\n"
+   },
+   "expect": [
+    [
+     "seed/users.json",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-sample-high-entropy",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "high-entropy secret next to an example.com address is still flagged",
+   "files": {
+    "seed/users.json": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Vb3kL9xQ2mTz7Rp4Hn8YcW5s\"\n}\n"
+   },
+   "expect": [
+    [
+     "seed/users.json",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-b64-jhipster-style",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "base64 of a replace-me phrase",
+   "files": {
+    "application.yml": "jwt:\n  base64-secret: bXktc2VjcmV0LWtleS13aGljaC1zaG91bGQtYmUtY2hhbmdlZC1pbi1wcm9kdWN0aW9uLWFuZC1iZS1iYXNlNjQtZW5jb2RlZAo=\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-b64-json",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "same in json",
+   "files": {
+    ".yo-rc.json": "{\n  \"jwtSecretKey\": \"cmVwbGFjZS10aGlzLWRlZmF1bHQtc2VjcmV0LWJlZm9yZS1zaGlwcGluZy1pdA==\"\n}\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-b64-env",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "same in .env",
+   "files": {
+    "conf/app.conf": "api_secret = ZG8tbm90LXVzZS10aGlzLWRlZmF1bHQtc2VjcmV0LWluLXByb2R1Y3Rpb24=\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-b64-random",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "base64 of random bytes",
+   "files": {
+    "application.yml": "jwt:\n  base64-secret: q83vEjRtYp2KxN7mZwL4cB9hDfGsA1uO6iT5yHnJ0kM=\n"
+   },
+   "expect": [
+    [
+     "application.yml",
+     2
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-b64-plain-words",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "base64 of a non-placeholder phrase is flagged",
+   "files": {
+    "app.env": "API_SECRET=ZXhhbXBsZS1zZWNyZXQtdmFsdWUx\n"
+   },
+   "expect": [
+    [
+     "app.env",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-neg-selector-helm",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "k8s field selector",
+   "files": {
+    "values.yaml": "secretFieldSelector: \"type!=kubernetes.io/dockercfg,type!=helm.sh/release.v1\"\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-selector-yaml",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "label selector with credential word",
+   "files": {
+    "cfg.yml": "secretLabelSelector: \"owner!=system,kind!=token.v1\"\n"
+   }
+  },
+  {
+   "id": "sc006-i3-neg-selector-js",
+   "rule": "SEC-SC-006",
+   "kind": "negative",
+   "note": "selector const",
+   "files": {
+    "a.js": "const tokenSelector = 'type!=bootstrap.kubernetes.io/token';\n"
+   }
+  },
+  {
+   "id": "sc006-i3-pos-selector-lookalike",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "password with != inside",
+   "files": {
+    "a.py": "DB_PASSWORD = 'Zq8!=vK2mPx4Lr7'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-selector-url",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "url-credential still flagged",
+   "files": {
+    "a.py": "U = 'postgres://app:Tz7WnB4yHc1Df6@db.internal.corp:5432/app'\n"
+   },
+   "expect": [
+    [
+     "a.py",
+     1
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-seed-aws-pem-env",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "seeded realistic multi-ecosystem secrets",
+   "files": {
+    "app/config.py": "AWS_KEY = 'AKIAJ4Q7ZP2MXN5RT6WB'\nDB_PASSWORD = 'Zq8!vK2mPx4Lr7'\n",
+    "deploy/id_rsa": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA3Zq8vK2mPx4Lr7TnB9yHc1Df6GsA0wJ5eU8iO2pQ4rS6tV8x\nabcDEF+/ghiJKL\n-----END RSA PRIVATE KEY-----\n",
+    ".env": "DATABASE_URL=postgres://app:Tz7WnB4yHc1Df6@db.internal.corp:5432/app\nSTRIPE_KEY=sk_live_4eC39HqLyjWDarjtT1zdp7dc\nJWT_SECRET=9fK2mQx7LpR4tZ8vN3bY6wHc\n"
+   },
+   "expect": [
+    [
+     "app/config.py",
+     1
+    ],
+    [
+     "app/config.py",
+     2
+    ],
+    [
+     "deploy/id_rsa",
+     1
+    ],
+    [
+     ".env",
+     1
+    ],
+    [
+     ".env",
+     2
+    ],
+    [
+     ".env",
+     3
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-seed-ci-compose",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "CI and compose secrets",
+   "files": {
+    ".github/workflows/ci.yml": "env:\n  NPM_TOKEN: npm_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7cF0hJ3kLm\n  DEPLOY_PASSWORD: Rq7!xK2mPz4Lv\n",
+    "docker-compose.yml": "services:\n  db:\n    environment:\n      MYSQL_ROOT_PASSWORD: Xt9qL4vK7mZ2pB\n"
+   },
+   "expect": [
+    [
+     ".github/workflows/ci.yml",
+     2
+    ],
+    [
+     ".github/workflows/ci.yml",
+     3
+    ],
+    [
+     "docker-compose.yml",
+     4
+    ]
+   ]
+  },
+  {
+   "id": "sc006-i3-pos-seed-go-llm",
+   "rule": "SEC-SC-006",
+   "kind": "positive",
+   "note": "Google and LLM keys",
+   "files": {
+    "main.go": "const apiKey = \"AIzaSyD4mQx7LpR4tZ8vN3bY6wHc1Df6GsA0wJ5\"\n",
+    "app.properties": "spring.datasource.password=Mq4xK9vL2pZt7R\nanthropic.key=sk-ant-api03-aB3dE6gH9jK2mN5pQ8sT1vW4yZ7cF0hJ3kLmN5pQ8sT\n"
+   },
+   "expect": [
+    [
+     "main.go",
+     1
+    ],
+    [
+     "app.properties",
+     1
+    ],
+    [
+     "app.properties",
+     2
+    ]
+   ]
+  }
+ ]
+}

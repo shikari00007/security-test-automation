@@ -34,3 +34,22 @@ The first hold-out showed little change after a first tuning round (recall 34% t
 Set 1 (training evidence after measurement): django/djangoproject.com 2e42ee2, gothinkster/django-realworld-example-app 29c9d42, expressjs/express 43fca52, pallets/flask 49943b5, tiangolo/full-stack-fastapi-template 77e550a, nestjs/nest 258e747, gothinkster/node-express-realworld-example-app 30b68e1, spring-projects/spring-petclinic 500158f, frappe/frappe 76e6cb0, NodeBB/NodeBB ace15bc, django/django 9bb0da7, apache/superset 47ac273; vulnerable: appsecco/dvna 9ba473a, digininja/DVWA 502ac15, snoopysecurity/dvws-node 4221c04, OWASP/NodeGoat c5cb68a, adeyosemanputra/pygoat 2aa4cc1.
 Set 2 (unseen): getredash/redash f561a53, TryGhost/Ghost e6e3a5b, netbox-community/netbox ddcb3ce, wagtail/wagtail 9d1d10e, zulip/zulip b700599, directus/directus 4856582; vulnerable: juice-shop/juice-shop c9f9922, WebGoat/WebGoat 4e98f1c, anxolerd/dvpwa 4a8f4a4, we45/Vulnerable-Flask-App b6a4f97, stamparm/DSVW 9ca3c9a, OWASP/Vulnerable-Web-Application c0f2689.
 These repositories were read statically and never executed. Per-change details and recall risks: `docs/RULE-ACCURACY-FIELD-*.md`.
+
+---
+# Second rework round, measured on hold-out set 3
+
+A further rework (PHP/Java precision, Python and TypeScript/JavaScript taint detection, SEC-SC-006 generalisation) was measured on a third set of 23 public repositories that none of the rule authors had read: 13 realistic PHP, Java, Python and TypeScript projects for precision and 10 deliberately vulnerable apps for recall (73 independently identified known-vulnerable locations). Method as above; the sample was 108 findings before and 105 after (31 of the "after" labels reused from identical "before" findings).
+
+| Measure | Before | After |
+|---|---|---|
+| Pattern precision, labelled sample | 81% (87 of 108) | 91% (96 of 105) |
+| SEC-SC-006 pattern precision | 32% (8 of 25) | 76% (19 of 25); findings on the realistic repos 163 to 33 |
+| SEC-WEB-002 pattern precision | 84% | 92% |
+| Strict precision (TP only) | 0% | 0% |
+| Recall, 73 known-vulnerable locations | 34% (25) | 45% (33) |
+| Recall WEB-002 / WEB-005 / WEB-006 / SC-006 / SC-001 | 6% / 8% / 83% / 42% / 0% | 29% / 31% / 94% / 37% / 0% |
+| Recall by language: PHP / Java / JavaScript / Python | 7/16, 6/14, 3/8, 6/28 | 11/16, 6/14, 5/8, 8/28 |
+
+Reading: SEC-SC-006 precision and PHP/JavaScript recall improved. **Python recall barely generalised** (the Python detectors recovered 18 of 19 known locations on the repositories used to build them, but only 8 of 28 on the unseen set), Java recall did not change, SEC-SC-001 recall stayed at zero, SEC-SC-006 recall dipped by one location, and no sampled finding in realistic code was shown to be exploitable. WEB-005 (21 findings) and SC-001 samples are small.
+
+Set 3 repositories (pinned commits). Realistic: ansible/ansible cd313f0, symfony/demo f42980c, excalidraw/excalidraw 5681e7d, laravel/framework 321caf7, jenkinsci/jenkins 3209f9a, keycloak/keycloak 549623e1, matomo-org/matomo 53047c4, mitmproxy/mitmproxy 0466185, n8n-io/n8n afd87867, outline/outline 8e7b1fa, spring-projects/spring-boot ebb5e11c, sqlalchemy/sqlalchemy 9c88919, WordPress/WordPress 0761560. Vulnerable: dolevf/Damn-Vulnerable-GraphQL-Application a961308, snyk-labs/nodejs-goof add14ba, Audi-1/sqli-labs e96f217, payatu/Tiredful-API 0134124, erev0s/VAmPI f16052d, SasanLabs/VulnerableApp c44987a, Contrast-Security-OSS/vulnpy b81885e, fportantier/vulpy 5249cc8, OWASP/wrongsecrets 692b475, s4n7h0/xvwa fb30fa5.

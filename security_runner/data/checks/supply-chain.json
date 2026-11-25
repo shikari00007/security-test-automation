@@ -194,7 +194,7 @@
         "deep"
       ],
       "applies_to": {},
-      "expected_secure_behavior": "No credentials or private keys are committed; secrets are injected at runtime from a secret store. Documentation sample values, crypto test vectors, keys that merely name a secret location, and synthetic reserved-domain accounts in smoke/packaging scripts, UI text in translation catalogs (non-token-shaped values under locale/i18n/language dirs or .po/.pot), claim/prefix/header-name constants, and values assigned from a shell/env variable reference are not findings; provider-format tokens and private keys always are.",
+      "expected_secure_behavior": "No credentials or private keys are committed; secrets are injected at runtime from a secret store. Documentation sample values, crypto test vectors, keys that merely name a secret location, and synthetic reserved-domain accounts in smoke/packaging scripts, UI text in translation catalogs (non-token-shaped values under locale/i18n/language dirs or .po/.pot), claim/prefix/header-name constants, values assigned from a shell/env variable reference, non-Latin-script UI text, dependency specifiers (catalog:/workspace:/semver), character-set/alphabet constants, algorithm names, relative secret-file paths, secret-store references (vault:/op://), lowercase scope/feature-flag identifiers, hash/digest/checksum values, base64 of a replace-me phrase, and sample passwords next to reserved-domain (example.com/.test) accounts are not findings; provider-format tokens and private keys always are.",
       "remediation": "Rotate the exposed secret, remove it from history, and load it from environment variables or a secrets manager; add secret scanning to CI.",
       "review_state": "reviewed",
       "standards": {

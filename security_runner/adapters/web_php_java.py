@@ -146,13 +146,13 @@ def _prep_jsp(t: str) -> str:
     pos = 0
     for m in re.finditer(r"<%([=@!]?)(.*?)%>", t, re.S):
         out.append(re.sub(r"[^\n]", " ", t[pos:m.start()]))
-        body = m.group(2)
+        body = _prep_code(m.group(2), False)      # strip comments per scriptlet (they must not run into the next block)
         if m.group(1) == "=":
             out.append("out.print(" + body.strip().rstrip(";") + ");" + "\n" * body.count("\n"))
         elif m.group(1) == "@":
             out.append("\n" * body.count("\n"))
         else:
-            out.append(body + "\n")
+            out.append(body + " ")   # no extra newline: keeps reported lines aligned with the file
         pos = m.end()
     out.append(re.sub(r"[^\n]", " ", t[pos:]))
     return _prep_code("".join(out), False)
@@ -217,6 +217,8 @@ def statements(code: str, kind: str) -> list[Stmt]:
                 msk.append(c + body.replace("(", " ").replace(")", " ") + c)
             elif php and c == "'" and re.search(r"\[\s*$", "".join(blk)) and re.match(r"^\w+$", body):
                 msk.append(lit)   # array key: $_SERVER['HTTP_X']
+            elif php and c == "'" and re.fullmatch(_TYPED_NAMES, body) and re.search(r",\s*$", "".join(blk)):
+                msk.append(lit)   # filter-type argument: ->get('id', 0, 'int')
             else:
                 msk.append(blank)
             blk.append(blank)
@@ -246,11 +248,14 @@ def statements(code: str, kind: str) -> list[Stmt]:
 # ------------------------------------------------------------------------------------------------
 # Taint machinery
 # ------------------------------------------------------------------------------------------------
+# `->get('id', 0, 'int')` / `->get('tmpl', '', 'cmd')`: a trailing literal filter naming a numeric / charset-restricted type
+_TYPED_NAMES = r"int|uint|integer|float|double|bool|boolean|cmd|word|alnum|alpha|base64|username"
+_TYPED_ARG = r"(?![^()]*,\s*['\"](?:" + _TYPED_NAMES + r")['\"]\s*\))"
 _PHP_SRC = re.compile(
     r"\$_(?:GET|POST|REQUEST|COOKIE|FILES)\b|\$HTTP_(?:GET|POST)_VARS\b|"
     r"\$_SERVER\s*\[\s*['\"](?:PHP_SELF|REQUEST_URI|QUERY_STRING|PATH_INFO|PATH_TRANSLATED|HTTP_\w+)['\"]\s*\]|"
-    r"\$request\s*->\s*(?:input|get|query|post|cookie|all|param|getParam|getQueryParams|getParsedBody)\s*\(|"
-    r"\bInput::(?:get|post|all|input)\s*\(|\$this\s*->\s*input\s*->\s*(?:get|post|cookie|get_post|server)\s*\(|"
+    r"\$request\s*->\s*(?:input|get|query|post|cookie|all|param|getParam|getQueryParams|getParsedBody)\s*\(" + _TYPED_ARG + r"|"
+    r"\bInput::(?:get|post|all|input)\s*\(" + _TYPED_ARG + r"|\$this\s*->\s*input\s*->\s*(?:get|post|cookie|get_post|server)\s*\(" + _TYPED_ARG + r"|"
     r"\bfilter_input\s*\(\s*INPUT_(?:GET|POST|COOKIE|REQUEST)\b(?![^)]*FILTER_(?:VALIDATE|SANITIZE))")
 _JAVA_SRC = re.compile(
     r"\b(?:request|req|httpRequest|servletRequest|httpServletRequest|hsr)\s*\.\s*(?:getParameter|getParameterValues|"
@@ -261,14 +266,16 @@ _SAN_PHP = re.compile(
     r"(?:^|[>:\\])(?:htmlspecialchars|htmlentities|esc_\w+|wp_kses\w*|strip_tags|intval|floatval|doubleval|absint|"
     r"filter_var|urlencode|rawurlencode|json_encode|number_format|md5|sha1|crc32|base64_encode|bin2hex|count|sizeof|strlen|"
     r"isset|empty|is_\w+|ctype_\w+|preg_match\w*|in_array|array_key_exists|escapeshellarg|escapeshellcmd|"
-    r"\w*sanitiz\w*|\w*escape\w*|addslashes|\w*quote\w*|pg_escape\w*|e|h|purify\w*|xss_clean|encode\w*|"
+    r"\w*sanitiz\w*|\w*escape\w*|Q|[Xx]ss::\w+|check_plain|\w*[jJ]son\w*|\w*[Hh]ash\w*|filter_xss\w*|\w*[Xx]ss\w*|addslashes|\w*quote\w*|pg_escape\w*|e|h|purify\w*|xss_clean|encode\w*|"
     r"mysqli?_real_escape_string|real_escape_string|date|time|rand|mt_rand|uniqid|basename|round|ceil|floor|abs|max|min)$",
     re.I)
 _SAN_JAVA = re.compile(
     r"(?:^|\.)(?:parseInt|parseLong|parseDouble|parseFloat|parseBoolean|parseShort|fromString|"
     r"\w*[eE]scape\w*|encodeFor\w+|forHtml\w*|forJava\w*|forUri\w*|forXml\w*|\w*[sS]anitiz\w*|encode\w*|\w*[qQ]uote\w*|"
     r"clean|length|size|isEmpty|hashCode|matches|equals|equalsIgnoreCase|contains|startsWith|endsWith|isNumeric|"
-    r"\w*[vV]alidat\w*|toInt|toLong|ofNullable|requireNonNull|hash\w*)$")
+    r"\w*[vV]alidat\w*|toInt|toLong|ofNullable|requireNonNull|hash\w*|"
+    r"writeValueAsString|writeValueAsBytes|toJson|toJSONString|valueToTree|"
+    r"(?:HTMLFilter|HtmlFilter|[Hh]tmlUtils|\w*Escap\w*|[Xx]ss\w*|ESAPI|[Ee]ncoder|Sanitizer|\w*Helper)\.(?:filter|html\w*|\w*[Ee]scap\w*|\w*[Ee]ncode\w*|\w*[Ss]anitiz\w*))$")
 _CAST = re.compile(r"\(\s*(?:int|integer|float|double|bool|boolean|long|short)\s*\)\s*$", re.I)
 _PHP_VALID = re.compile(r"\b(?:preg_match\w*|ctype_\w+|is_numeric|is_int|in_array|filter_var|array_key_exists)\s*\(")
 _JAVA_VALID = re.compile(r"\.matches\s*\(|\bisNumeric\s*\(|\bPattern\.matches\s*\(|\b(?:ALLOWED|ALLOW|WHITELIST|ALLOWLIST)\w*\.contains\s*\(|"
@@ -295,6 +302,7 @@ def _enclosing(masked: str, pos: int) -> list[str]:
 class State:
     def __init__(self, kind: str):
         self.kind = kind
+        self.cfgnames: set[str] = set()   # Java: names whose every assignment in the file is a config read / constant
         self.reset()
         self.reported: set[str] = set()   # vars already reported where they were built (avoid double reports)
 
@@ -304,6 +312,8 @@ class State:
         self.sqlvars: set[str] = set()
         self.numeric: set[str] = set()
         self.const_vars: set[str] = set()
+        self.htmlobjs: set[str] = set()   # PHP: variables holding HTML-builder widgets (class name html_*/Html*Field ...)
+        self.nonhtml = False   # Java: a non-HTML Content-Type was set earlier in this method
         self.reported = set() if not hasattr(self, "reported") else self.reported
 
 
@@ -322,23 +332,50 @@ _NOPROP = re.compile(
     r"createQuery|createNativeQuery|prepareStatement|getRuntime|eval|header|setcookie)$")
 
 
+_OBJECT_CAST = re.compile(r"\(\s*(?!(?:String|Object|CharSequence)\s*\))[A-Z][\w.]*(?:<[\w.<>?, \[\]]*>)?(?:\[\])?\s*\)\s*$")
+_CMP_AFTER = re.compile(r"^\s*(?:===?|!==?|<>|<=>?|>=|\binstanceof\b)")
+_CMP_BEFORE = re.compile(r"(?:===?|!==?|<>|\binstanceof)\s*$")
+
+
+def _comparison_operand(masked: str, p: int, end: int) -> bool:
+    """The occurrence is an operand of a comparison (`$_GET['x'] === 'y'`, `prefix == null`): the value yields a boolean
+    and does not flow into the surrounding expression."""
+    if masked[end - 1:end] == "(":                       # method-style source: skip the argument list
+        _, close = call_args(masked, end - 1)
+        end = close + 1
+    while True:                                          # `$_GET['a']['b']`
+        m = re.match(r"\s*\[", masked[end:])
+        if not m:
+            break
+        _, close = call_args(masked, end + m.end() - 1)
+        end = close + 1
+    return bool(_CMP_AFTER.match(masked[end:]) or _CMP_BEFORE.search(masked[max(0, p - 14):p]))
+
+
 def tainted_hits(st: State, masked: str, skip: set[str] | None = None, prop: bool = False) -> list[int]:
     """Positions in ``masked`` of tainted occurrences (source or tainted var) NOT enclosed by a sanitiser/cast.
     ``prop=True``: for taint propagation into an assigned variable - results of query/exec calls are not tainted."""
     src = _PHP_SRC if st.kind == "php" else _JAVA_SRC
     san = _SAN_PHP if st.kind == "php" else _SAN_JAVA
-    pos = [m.start() for m in src.finditer(masked)]
+    spans = [(m.start(), m.end()) for m in src.finditer(masked)]
     names = {v for v in st.tainted if not (skip and v in skip)}
     rx = _var_rx(st.kind, names)
     if rx:
-        pos += [m.start() for m in rx.finditer(masked)]
+        spans += [(m.start(), m.end()) for m in rx.finditer(masked)]
+    ends: dict[int, int] = {}
+    for a, b in spans:
+        ends[a] = max(ends.get(a, 0), b)
     hits = []
-    for p in sorted(set(pos)):
-        if _CAST.search(masked[max(0, p - 20):p]):
+    for p in sorted(ends):
+        if _CAST.search(masked[max(0, p - 20):p]) or _comparison_operand(masked, p, ends[p]):
             continue
+        if st.kind == "java" and "getAttribute" in masked[p:ends[p]] and _OBJECT_CAST.search(masked[max(0, p - 60):p]):
+            continue    # `(Session) request.getAttribute("x")`: a server-side object stored by the application, not request text
         enc = _enclosing(masked, p)
         if any(san.search(nm) for nm in enc) or (prop and any(_NOPROP.search(nm) for nm in enc)):
             continue
+        if st.htmlobjs and any(nm.split("->")[0] in st.htmlobjs for nm in enc if "->" in nm):
+            continue    # `$field->show($_POST['x'])` on a form-widget object that escapes its values
         hits.append(p)
     return hits
 
@@ -392,7 +429,8 @@ def _split_plus(blank: str) -> list[str]:
 # Java: dynamic non-constant operands
 # ------------------------------------------------------------------------------------------------
 _NUM_TYPES = r"int|long|short|byte|double|float|boolean|char|Integer|Long|Short|Double|Float|Boolean|BigDecimal|BigInteger|UUID|LocalDate|LocalDateTime|Instant|Date|Timestamp"
-_SAFE_NAME = re.compile(r"(?i)(?:table|tablename|columns?|columnlist|schema|placeholders?|marks|limit|offset|clause|alias|prefix|orderby|sortorder|direction|joiner)$")
+_SAFE_NAME = re.compile(r"(?i:table|tablename|columns?|columnlist|schema|placeholders?|marks|limit|offset|clause|alias|prefix|orderby|sortorder|direction|joiner)$|"
+                        r"(?:^|_)(?:col|cols|tbl)$|(?<=[a-z0-9])(?:Col|Cols|Tbl)$")
 _SQL_LIT = re.compile(r"""(?is)["'][^"']*\b(?:select\s.+?\sfrom\b|insert\s+into\b|update\s+\S+\s+set\b|delete\s+from\b|where\s|\border\s+by\b|\bfrom\s+\S|\bvalues\s*\()""")
 _FMT_SAFE = re.compile(r"%(?:[-+0, #]*\d*(?:\.\d+)?[dfnbxXoeEgG%]|n)")
 
@@ -412,6 +450,8 @@ def _dynamic_operand(part: str, st: State) -> bool:
     base = re.match(r"^(?:this\.)?([A-Za-z_]\w*)$", p)
     if base and base.group(1) in st.numeric:
         return False
+    if base and base.group(1) in st.cfgnames:
+        return False   # only ever assigned from configuration / constants in this file
     last = re.search(r"([A-Za-z_]\w*)\s*(?:\(\s*\))?$", p)
     if last and _SAFE_NAME.search(last.group(1)):
         return False
@@ -455,6 +495,10 @@ _TAINT_ANN = re.compile(r"@(?:RequestParam|PathVariable|RequestBody|RequestHeade
                         r"HeaderParam|ModelAttribute|MatrixParam|RequestPart)\b")
 _NAMEWORD_PHP = re.compile(r"\$(?:cmd|command|user_?input|input|payload|expr|argv|args|param|params|code)\b")
 
+_PHP_HTML_NEW = re.compile(r"new\s+\\?(?:html_\w+|Html\w*(?:Field|Input|Select|Textarea|Button|Checkbox|Radio|Table|Label)\w*)\s*[(;]|new\s+\\?(?:html_\w+|Html\w*(?:Field|Input|Select|Textarea|Button|Checkbox|Radio|Table|Label)\w*)\s*$", re.I)
+_PHP_CLI = re.compile(r"\A#!.*\bphp|\bPHP_SAPI\b|\bphp_sapi_name\s*\(|\$argv\b|\$_SERVER\s*\[\s*['\"]argv['\"]|\b(?:STDIN|STDERR|STDOUT)\b|"
+                      r"\bextends\s+(?:\\?\w+\\)*Command\b|Console\\Command|\b(?:Input|Output)Interface\b|\bSymfonyStyle\b|\bnamespace\s+[\w\\]*\\(?:Console|Command|Cli)\b")
+_PHP_REQ_SURFACE = re.compile(r"\$_(?:GET|POST|REQUEST|COOKIE|FILES|SERVER)\b|\$request\b|\$this\s*->\s*input\b|\bfilter_input\s*\(|\bInput::|\$HTTP_\w+_VARS")
 _PHP_XSS_CT = re.compile(r"Content-Type\s*:\s*(?:application/(?:json|octet-stream|xml)|text/(?:plain|csv|xml))", re.I)
 
 
@@ -484,6 +528,10 @@ def _java_header(st: State, blank: str, raw: str) -> bool:
 
 _JAVA_DECL = re.compile(r"^(?:final\s+)?(?:[A-Za-z_][\w.<>\[\],?]*\s+)?([A-Za-z_]\w*)\s*(\+?=)(?!=)\s*(.*)$", re.S)
 _PHP_ASSIGN = re.compile(r"^(\$\w+)\s*(\.?=)(?![=>])\s*(.*)$", re.S)
+_JAVA_NONHTML_CT = re.compile(
+    r"""(?:setContentType|\bsetHeader|\baddHeader)\s*\(\s*(?:"Content-Type"\s*,\s*)?"(?:application/(?:json|xml|octet-stream|pdf|[\w.+-]*\+(?:json|xml))|"""
+    r"""text/(?:plain|csv|xml|calendar)|message/|image/)""", re.I)
+_JAVA_HTML_CT = re.compile(r"""(?:setContentType|\bsetHeader|\baddHeader)\s*\(\s*(?:"Content-Type"\s*,\s*)?"(?:text/html|application/xhtml)""", re.I)
 _JAVA_NUMDECL = re.compile(r"\b(?:" + _NUM_TYPES + r")\s+(\w+)\s*(?:=|$)")
 
 
@@ -497,6 +545,58 @@ _PHP_GUARD = re.compile(r"\b(?:preg_match\w*|ctype_\w+|is_numeric|is_int|in_arra
 _JAVA_GUARD_RX = (re.compile(r"(\w+)\s*\.\s*matches\s*\("), re.compile(r"\bisNumeric\s*\(\s*(\w+)"),
                   re.compile(r"(?i:\ballow\w*|whitelist\w*)\s*\.\s*contains\s*\(\s*(\w+)"),
                   re.compile(r"\bPattern\.matches\s*\([^,]*,\s*(\w+)"))
+_PHP_CFG = re.compile(
+    r"(?:[\w$\\]+(?:::\w+\([^()]*\))?(?:\s*->\s*\w+(?:\([^()]*\))?)*\s*->\s*config\s*->\s*get\w*\s*\(|"
+    r"\$(?:this\s*->\s*)?(?:config|settings|conf|cfg|options)\s*(?:->\s*\w+\s*)?->\s*get\w*\s*\(|"
+    r"\bConfig::\w+\s*\(|\bconfig\s*\(|\bgetenv\s*\(|\bget_option\s*\(|\bvariable_get\s*\(|->\s*getParameter\s*\()|"
+    r"\$_ENV\b|\$(?:conf|config|cfg|settings|CFG)\s*\[")
+
+
+def _strip_cfg(m: str) -> tuple[str, bool]:
+    """Remove configuration reads (with their argument lists) from a masked expression."""
+    found = False
+    while True:
+        mm = _PHP_CFG.search(m)
+        if not mm:
+            return m, found
+        found = True
+        end = mm.end()
+        if m[end - 1] == "(":
+            _, close = call_args(m, end - 1)
+            end = close + 1
+        elif m[end - 1] == "[":
+            _, close = call_args(m, end - 1)
+            end = close + 1
+        m = m[:mm.start()] + " " + m[end:]
+
+
+_SHELL_SAFE = re.compile(r"(?:^|[>:\\])(?:escapeshell(?:arg|cmd)|intval|absint|floatval|abs|md5|sha1|crc32|bin2hex|base64_encode|"
+                         r"urlencode|rawurlencode|count|strlen|uniqid|date|time|basename)$", re.I)
+
+
+def _trusted_php_rhs(rhs_m: str, rhs_r: str, st: State) -> bool:
+    """Right-hand side whose only dynamic parts are trusted: values read from application configuration / environment, and
+    variables that appear solely inside a sanitiser call. Used to stop the variable-name heuristic (`$cmd`, `$args`) from
+    treating an operator-configured or escaped command line as attacker-controlled."""
+    m = rhs_m.replace("\\$", "")
+    escaped_map = False
+    for am in re.finditer(r"""array_map\s*\(\s*['"]escapeshell(?:arg|cmd)['"]""", rhs_r):   # array_map('escapeshellarg', $parts)
+        if am.start() < len(m):
+            _, close = call_args(m, m.find("(", am.start()))
+            m = m[:am.start()] + " " * (close + 1 - am.start()) + m[close + 1:]
+            escaped_map = True
+    m, cfg = _strip_cfg(m)
+    san, loose = 0, 0
+    for v in re.finditer(r"\$\w+", m):
+        if v.group(0) in st.const_vars:
+            san += 1          # variable itself trusted (config value / constant / escaped earlier)
+        elif any(_SHELL_SAFE.search(n) for n in _enclosing(m, v.start())):
+            san += 1
+        else:
+            loose += 1
+    return not loose and bool(cfg or san or escaped_map) and not tainted_hits(st, rhs_m)
+
+
 _ESC_RHS = re.compile(r"\b(?:escapeshell(?:arg|cmd)|intval|absint|basename)\s*\(")
 
 
@@ -512,6 +612,33 @@ def _untaint_validated(st: State, m_: str, php: bool):
                 st.tainted.pop(g.group(1), None)
 
 
+
+_CFG_RHS = re.compile(
+    r"""^\s*(?:\(\s*String\s*\)\s*)?(?:(?:"(?:[^"\\]|\\.)*"|[A-Z][A-Z0-9_.]*)(?:\s*\+\s*(?:"(?:[^"\\]|\\.)*"|[A-Z][A-Z0-9_.]*))*\s*$|"""
+    r"""(?:[\w.$]+\s*\.\s*)?(?:getProperty|getInitParameter|getenv|getStringProperty|getRequiredProperty|getPropertyValue|getConfigValue)\s*\()""")
+_VALUE_FIELD = re.compile(r"@Value\s*\([^)]*\)\s*(?:(?:private|protected|public|final|static)\s+)*[\w.<>\[\]]+\s+(\w+)\s*;")
+
+
+def java_config_names(stmts: "list[Stmt]", text: str) -> set[str]:
+    """Names (fields / locals) whose every assignment in the file reads application configuration or a constant
+    (`props.getProperty(..)`, `getInitParameter(..)`, `System.getenv(..)`, `"lit"`, `@Value` injection): identifier-position data
+    such as table / column names that an operator, not a request, controls."""
+    good: set[str] = {m.group(1) for m in _VALUE_FIELD.finditer(text)}
+    bad: set[str] = set()
+    for s in stmts:
+        if _JAVA_KW.match(s.blank.lstrip()):
+            continue
+        am = _JAVA_DECL.match(s.blank)
+        if not am or "(" in s.blank.split("=", 1)[0]:
+            continue
+        name, op, off = am.group(1), am.group(2), am.start(3)
+        if op == "=" and _CFG_RHS.match(s.raw[off:]):
+            good.add(name)
+        else:
+            bad.add(name)
+    return good - bad
+
+
 def analyze(text: str, kind: str) -> dict[str, list]:
     return _analyze(text, kind)
 
@@ -524,6 +651,11 @@ def _analyze(text: str, kind: str):
     php = kind == "php"
     st = State("php" if php else "java")
     skip_xss = php and bool(_PHP_XSS_CT.search(code))
+    # the variable-name heuristic ($cmd/$args/...) is skipped for CLI-only files (shebang, argv, STDIN, console Command
+    # classes) that never touch a request: build/maintenance scripts are not web attack surface
+    req_surface = (not php) or bool(_PHP_REQ_SURFACE.search(code)) or not _PHP_CLI.search(text)
+    if not php:
+        st.cfgnames = java_config_names(stmts, code)
     java_writers = {"out"}
     imports_script = bool(re.search(r"javax\.script|ScriptEngine|GroovyShell|SpelExpressionParser|\bOgnl\b|\bMVEL\b", code))
 
@@ -542,10 +674,14 @@ def _analyze(text: str, kind: str):
                 java_writers.add(mw.group(1) or mw.group(2))
             for md in _JAVA_NUMDECL.finditer(b_):
                 st.numeric.add(md.group(1))
+            if _JAVA_HTML_CT.search(r_):
+                st.nonhtml = False
+            elif _JAVA_NONHTML_CT.search(r_):
+                st.nonhtml = True
 
         # sinks first: they see the taint state before this statement's own assignment
         if php:
-            _php_sinks(s, st, add, skip_xss)
+            _php_sinks(s, st, add, skip_xss, req_surface)
         else:
             _java_sinks(s, st, add, java_writers, imports_script)
         _untaint_validated(st, m_, php)
@@ -581,13 +717,15 @@ def _analyze(text: str, kind: str):
         rhs_m, rhs_b, rhs_r = m_[off:], b_[off:], r_[off:]
         hits = tainted_hits(st, rhs_m, prop=True)
         if php:
+            if op == "=" and _PHP_HTML_NEW.match(rhs_m.strip()):
+                st.htmlobjs.add(var)
             if hits:
                 st.tainted[var] = (s.line, s.line_at(len(s.blank)))
                 st.const_vars.discard(var)
             elif op == "=":
                 st.tainted.pop(var, None)
                 st.reported.discard(var)
-                if _constant_expr(rhs_b) or _ESC_RHS.search(rhs_m):
+                if _constant_expr(rhs_b) or _ESC_RHS.search(rhs_m) or _trusted_php_rhs(rhs_m, rhs_r, st):
                     st.const_vars.add(var)
                 else:
                     st.const_vars.discard(var)
@@ -634,7 +772,7 @@ def _php_arg_hits(st: State, masked: str, open_idx: int, which: tuple[int, ...] 
     return hits, inner
 
 
-def _php_sinks(s: Stmt, st: State, add, skip_xss: bool):
+def _php_sinks(s: Stmt, st: State, add, skip_xss: bool, req_surface: bool = True):
     m_, b_ = s.masked, s.blank
     # ---- XSS: echo / print / printf / die / exit with tainted data --------------------------------------
     if not skip_xss:
@@ -668,8 +806,7 @@ def _php_sinks(s: Stmt, st: State, add, skip_xss: bool):
             hit = bool(hits)
             if not hit:
                 first = split_args(inner)[0] if inner.strip() else ""
-                nm = _NAMEWORD_PHP.search(first)
-                hit = bool(nm and nm.group(0) not in st.const_vars)
+                hit = req_surface and any(nm.group(0) not in st.const_vars for nm in _NAMEWORD_PHP.finditer(first))
             if hit:
                 add("SEC-WEB-005", s, m.start(), f"{label} execution built from request-derived/dynamic data")
     for m in re.finditer(r"`[^`]*\$\w+[^`]*`", m_):
@@ -722,7 +859,7 @@ def _java_sinks(s: Stmt, st: State, add, writers: set[str], imports_script: bool
     m_, b_, r_ = s.masked, s.blank, s.raw
     # ---- XSS: writer output ----------------------------------------------------------------------------
     wr = "|".join(re.escape(w) for w in sorted(writers))
-    for m in re.finditer(r"(?:\bresponse\s*\.\s*getWriter\s*\(\s*\)|(?<![\w.])(?:" + wr + r"))\s*\.\s*(?:println|print|write|append|printf|format)\s*\(", m_):
+    for m in ([] if st.nonhtml else re.finditer(r"(?:\bresponse\s*\.\s*getWriter\s*\(\s*\)|(?<![\w.])(?:" + wr + r"))\s*\.\s*(?:println|print|write|append|printf|format)\s*\(", m_)):
         inner, _ = call_args(m_, m.end() - 1)
         if tainted_hits(st, inner):
             add("SEC-WEB-002", s, m.start(), "response writer outputs request-derived data without HTML encoding")
@@ -792,16 +929,59 @@ def java_fmt_dynamic(inner_b: str, inner_r: str, st: State) -> bool:
     return any(_dynamic_operand(a, st) for a in split_args(args)[1:])
 
 
+def _statements_containing(line: str, file_text: str) -> list[str]:
+    """Every statement (lines joined, up to the terminating `;`) in which a line equal to ``line`` occurs."""
+    lines = file_text.splitlines()
+    key = line.strip()
+    out = []
+    for i, ln in enumerate(lines):
+        if ln.strip() != key:
+            continue
+        a = i
+        while a > 0 and (lines[a].strip().startswith("+") or lines[a - 1].rstrip().endswith("+")) and i - a < 30:
+            a -= 1
+        b = i
+        while b < len(lines) - 1 and not lines[b].rstrip().endswith((";", "{", "}")) and b - i < 30:
+            b += 1
+        out.append(" ".join(x.strip() for x in lines[a:b + 1]))
+    return out
+
+
+def java_line_dynamic_joined(stmt: str, st: State) -> bool:
+    blank = re.sub(r'"(?:[^"\\]|\\.)*"', lambda m: '"' + "x" * (len(m.group(0)) - 2) + '"', stmt)
+    expr = re.sub(r"^(?:return\s+|[^\"=(]*[^=!<>]=(?!=)\s*)", "", blank.strip().rstrip(";").strip())
+    expr = re.sub(r"^[\w.\s]*\(\s*(?=\")", "", expr)                  # `st.executeQuery(` before the first literal
+    while expr.endswith(")") and expr.count(")") > expr.count("("):
+        expr = expr[:-1].rstrip()
+    if re.search(r"[({]", re.sub(r'"x*"', '""', expr)):
+        return True
+    return any(_dynamic_operand(p, st) for p in _split_plus(expr))
+
+
+@lru_cache(maxsize=64)
+def _java_cfg_names_cached(file_text: str) -> set[str]:
+    code = prep(file_text, "java")
+    return java_config_names(statements(code, "java"), code)
+
+
 def java_line_dynamic(line: str, file_text: str) -> bool:
     """Single-line re-check for the generic SQL-concatenation heuristic on .java files: True when the line carries a
     non-constant, non-numeric operand (or anything this helper cannot classify, so recall is kept)."""
     st = State("java")
+    st.cfgnames = _java_cfg_names_cached(file_text)
     st.numeric = {m.group(1) for m in re.finditer(r"\b(?:" + _NUM_TYPES + r")\s+(\w+)\s*[=,;)]", file_text)}
     blank = re.sub(r'"(?:[^"\\]|\\.)*"', lambda m: '"' + "x" * (len(m.group(0)) - 2) + '"', line)
     if re.search(r"\bString\.format\s*\(|\.formatted\s*\(", blank):
         return java_dynamic_sql(line, blank, st) or bool(not _SQL_LIT.search(line))
-    if blank.rstrip().endswith("+") or '"' not in blank:
-        return True   # continuation line / not a plain concatenation: keep the finding
+    bs = blank.strip()
+    if bs.endswith("+") or bs.startswith("+"):
+        # part of a multi-line concatenation: judge the WHOLE statement this line belongs to
+        stmts_ = _statements_containing(line, file_text)
+        if not stmts_:
+            return True
+        return any(java_line_dynamic_joined(j, st) for j in stmts_)
+    if '"' not in blank:
+        return True   # not a plain concatenation: keep the finding
     seg = split_args(blank[blank.find('"'):])[0].rstrip().rstrip(";").rstrip()
     while seg.endswith(")") and seg.count(")") > seg.count("("):
         seg = seg[:-1].rstrip()
@@ -809,3 +989,73 @@ def java_line_dynamic(line: str, file_text: str) -> bool:
     if len(parts) < 2:
         return True
     return any(_dynamic_operand(p, st) for p in parts)
+
+
+# --------------------------------------------------------------------------------------------------
+# PHP: single-line re-check for the generic `"SELECT ..." . $var` SQL-concatenation heuristic (web.py hook)
+# --------------------------------------------------------------------------------------------------
+_PHP_IDENT_CALL = re.compile(
+    r"(?i)(?:->|::|\\|^)\s*(?:table_?name|get_?table\w*|get\w*table|quote\w*|backquote|qn|escape\w*|real_escape_string|now|"
+    r"intval|absint|floatval|count|prefixTable|tbl|e)\s*\(")
+_PHP_IDENT_NAME = re.compile(
+    r"(?i)(?:^|[_>:\\$])(?:\w*table|\w*tbl|tablename|\w*columns?|cols|colnames?|schema|placeholders?|marks|prefix|vals|alias)$")
+_PHP_CONST = re.compile(r"^(?:(?:self|static|[A-Z]\w*)::)?[A-Z][A-Z0-9_]*$")
+
+
+def _php_operand_safe(expr: str) -> bool:
+    e = expr.strip()
+    while e.startswith("(") and e.endswith(")") and call_args(e, 0)[1] == len(e) - 1:
+        e = e[1:-1].strip()
+    if not e:
+        return True
+    if re.match(r"^\(\s*(?:int|integer|float|double|bool)\s*\)", e) or re.match(r"^-?\d[\d.]*$", e) or _PHP_CONST.match(e):
+        return True
+    if _PHP_IDENT_CALL.search(e.split("(", 1)[0] + "("):
+        return True
+    base = re.sub(r"\s*\([^()]*\)\s*$", "", e)          # trailing call: $this->getTable()
+    base = re.sub(r"\[[^\]]*\]$", "", base)
+    tail = re.search(r"([A-Za-z_]\w*)\s*$", base)
+    return bool(tail and _PHP_IDENT_NAME.search(tail.group(1)))
+
+
+def php_line_dynamic(line: str, file_text: str = "") -> bool:
+    """True when the line's SQL string carries a dynamic operand that is NOT a quoted identifier / table-name helper /
+    table- or column-named variable / numeric cast / constant. Anything this helper cannot classify stays a finding."""
+    ops: list[str] = []
+    q = re.search(r"[\"']", line)
+    line = line[q.start():] if q else line      # drop `$sql = ` / `$db->query(` / `return ` before the first literal
+    i, n = 0, len(line)
+    cur: list[str] = []
+    depth = 0
+    while i < n:
+        c = line[i]
+        if c in "\"'":
+            j = _skip_string(line, i, c)
+            if c == '"':
+                body = line[i + 1:j - 1]
+                for m in re.finditer(r"\{\$([^{}]*)\}|(?<!\\)\$(\w+(?:->\w+)?)", body):
+                    ops.append("$" + (m.group(1) or m.group(2)))
+            cur.append("s")
+            i = j
+            continue
+        if c in "([":
+            depth += 1
+        elif c in ")]":
+            depth -= 1
+        if depth < 0 or (depth == 0 and c in ",;"):
+            break              # end of the first argument / statement
+        if c == "." and depth == 0 and not re.match(r"\.\d", line[i:i + 2]) and line[i:i + 3] != "...":
+            part = "".join(cur).strip()
+            if part and part != "s":
+                ops.append(part)
+            cur = []
+        else:
+            cur.append(c)
+        i += 1
+    last = "".join(cur).strip().rstrip(";,)").strip()
+    if last and last != "s":
+        ops.append(last)
+    ops = [o for o in ops if not re.fullmatch(r"s*", o)]
+    if not ops:
+        return True        # nothing parseable: keep the finding
+    return not all(_php_operand_safe(o) for o in ops if o.startswith("$") or re.search(r"[\w)]", o))

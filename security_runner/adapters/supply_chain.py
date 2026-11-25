@@ -407,6 +407,78 @@ def _real_keyword(key: str) -> bool:
     return False
 
 
+# --- iter3 (SC-006 precision): value shapes that are never key material --------------------------------
+# Each family was measured as a false-positive family on benign third-party repos (see
+# docs/RULE-ACCURACY-FIELD-iter3-sc006.md). They apply to the *generic* detector only; provider-format
+# tokens and PEM keys do not pass through them.
+_ALGO_TOKENS = {"hmac", "sha", "sha1", "sha2", "sha3", "sha224", "sha256", "sha384", "sha512", "md5", "aes", "rsa", "des", "3des",
+                "ecdsa", "eddsa", "ed25519", "x25519", "chacha20", "poly1305", "gcm", "cbc", "ctr", "ecb", "pkcs1", "pkcs5",
+                "pkcs7", "pkcs8", "oaep", "pss", "hs256", "hs384", "hs512", "rs256", "rs384", "rs512", "es256", "es384", "es512",
+                "ps256", "pbkdf2", "bcrypt", "scrypt", "argon2", "argon2id", "argon2i", "argon2d", "blake2b", "blake2s",
+                "hkdf", "v1", "v2", "v3", "hmacsha256", "hs", "rs", "es", "ps"}
+_FILE_EXT = r"(?:txt|pem|key|json|ya?ml|env|conf|cfg|crt|cer|pub|p12|pfx|jks|properties|ini|xml|toml|secret|secrets|token|pass|passwd|htpasswd|gpg|asc|kdbx)"
+_SECRET_REF = re.compile(r"(?i)^(?:env|vault|op|file|ssm|ref\+[a-z]+|secretref|secretsmanager|keyvault|gcpsm|awssm|k8s|kms|sops)[:/]|^arn:aws|^ENC\[|^projects/[^/]+/secrets/")
+
+
+def _sequential_run(v: str, n: int = 8) -> bool:
+    """True when v holds an ascending run of >= n consecutive letters/digits ('abcdefgh', '01234567', '1234567890'):
+    an alphabet / charset constant or an obviously hand-typed placeholder, not random key material."""
+    def nxt(a: str, b: str) -> bool:
+        if not (a.isascii() and b.isascii() and a.isalnum() and b.isalnum()):
+            return False
+        if a.isdigit() != b.isdigit() or a.isupper() != b.isupper():
+            return False
+        return ord(b) == ord(a) + 1 or (a == "9" and b == "0")
+    run = 1
+    for a, b in zip(v, v[1:]):
+        run = run + 1 if nxt(a, b) else 1
+        if run >= n:
+            return True
+    return False
+
+
+def _readable_base64(v: str) -> bool:
+    """Base64 whose payload is readable prose ('my-secret-key-should-be-changed...'): a documented dev default."""
+    import base64
+    if len(v) < 24 or not re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", v):
+        return False
+    try:
+        d = base64.b64decode(v + "=" * (-len(v) % 4), validate=True).decode("ascii")
+    except Exception:
+        return False
+    d = d.lower()
+    # must read as an instruction to replace it ('...should-be-changed-in-production'), not merely be ASCII
+    return bool(re.fullmatch(r"[a-z][a-z0-9 _.-]*[a-z0-9]\s*", d)) and bool(re.search(r"should|changed?[-_ ]|replace|your[-_ ]|placeholder|default|do[-_ ]not|please", d))
+
+
+def _non_secret_value_shape(v: str) -> bool:
+    if re.search(r"[^\x00-\x24F\u2000-\u206F]", v) and any(ch.isalpha() and ord(ch) > 0x24F for ch in v):
+        return True   # non-Latin-script letters (CJK, Cyrillic, Arabic, ...): human-language UI text, not a key
+    if re.fullmatch(r"(?:catalog|workspace|npm|link|file|portal|patch|jsr|git\+\w+):[^\s]*", v) or \
+            re.fullmatch(r"[~^<>=v ]*\d+(?:\.[\dx*]+){1,3}(?:[-+][\w.]+)?", v):
+        return True   # dependency specifier ('catalog:', 'workspace:*', '^1.2.3') in a manifest key like "secretlint"
+    if _sequential_run(v):
+        return True   # character-set / alphabet constant ('abc..xyz0123456789') or typed placeholder
+    toks = [t for t in re.split(r"[-_/+ .]+", v.lower()) if t]
+    if len(toks) >= 1 and all(t in _ALGO_TOKENS or re.fullmatch(r"\d{1,4}", t) for t in toks) and not re.fullmatch(r"\d+", v):
+        return True   # algorithm / cipher / scheme name ('HS256', 'aes-256-gcm', 'hmac-sha256')
+    if " " not in v and (re.search(r"\." + _FILE_EXT + "$", v, re.I) or re.fullmatch(r"(?:[a-z0-9._-]{1,30}/){2,}[a-z0-9._-]*", v) and not re.search(r"\d[a-z]+\d", v)) \
+            and re.fullmatch(r"[\w./-]+", v):
+        return True   # relative file path / file name pointing at a secret file ('config/secrets.yml', 'db_password.txt')
+    if _SECRET_REF.match(v):
+        return True   # reference into a secret store / env, not the secret itself
+    if re.fullmatch(r"[a-z]+(?:[:/.][a-z_]+)+", v):
+        return True   # lowercase scope / permission identifier ('read:admin', 'write:repository')
+    ws = re.split(r"[-_.]+", v)
+    if len(ws) >= 2 and v == v.lower() and all(re.fullmatch(r"[a-z]{2,}\d{0,2}|v?\d{1,2}", t) for t in ws):
+        return True   # kebab/snake identifier or feature flag ('amazons3_accesskey', 'passwordless-login-v2')
+    if re.search(r"[!=]=?|\bin\b", v) and re.fullmatch(r"[\w.!=,/ -]+", v) and re.search(r"[a-z]{3,}[.!=]", v) and "!=" in v:
+        return True   # selector expression ('type!=kubernetes.io/...')
+    if _readable_base64(v):
+        return True   # base64 of a readable placeholder phrase
+    return False
+
+
 def _looks_secret(v: str) -> bool:
     if _PLACEHOLDER.search(v) or re.search(r"\s", v) or re.match(r"\$(?:2[aby]|argon2|pbkdf2|scrypt)|(?:pbkdf2|scrypt|bcrypt)[:$]", v):
         return False
@@ -424,6 +496,8 @@ def _looks_secret(v: str) -> bool:
         return False  # GUID / UPPER_SNAKE constant name
     if v.startswith(("/", "./", "~/")) or re.fullmatch(r"[a-z]+(?:[-_.][a-z]+)+", v):
         return False  # filesystem path / lowercase-word identifier (e.g. header name x-api-key)
+    if _non_secret_value_shape(v):
+        return False
     has_alpha = re.search(r"[A-Za-z]", v) is not None
     has_digit = re.search(r"\d", v) is not None
     has_special = re.search(r"[^A-Za-z0-9]", v) is not None
@@ -438,10 +512,10 @@ _SMOKE_TOKENS = {"smoke", "packaging", "package", "sanity", "verify", "e2e", "ci
 # Identity on a reserved (RFC 2606/6761) domain => synthetic account that cannot exist on the internet.
 _RESERVED_ID = re.compile(r"(?i)[\w.+-]+@(?:[\w-]+\.)*(?:example\.(?:com|org|net)|[\w-]+\.(?:test|invalid|example|localhost)|localhost)\b")
 # Names a secret / says how to obtain it, rather than being the secret.
-_NAME_SUFFIX = re.compile(r"(?:[_-](?:env|envvar|var|name|file|path|label|header|field|prompt|placeholder|hint|policy|regex|pattern|type|length|claim|prefix|suffix|scheme|cookie|param|attr|attribute))$"
-                          r"|[a-z](?:Env|Var|Name|File|Path|Label|Header|Field|Prompt|Placeholder|Hint|Policy|Regex|Pattern|Type|Length|Claim|Prefix|Suffix|Scheme|Cookie|Param|Attr|Attribute)$", re.I)
+_NAME_SUFFIX = re.compile(r"(?:[_-](?:env|envvar|var|name|file|path|label|header|field|prompt|placeholder|hint|policy|regex|pattern|type|length|claim|prefix|suffix|scheme|cookie|param|attr|attribute|hash|digest|checksum|fingerprint|thumbprint|selector|algorithm|alg|algo|hashing_algorithm))$"
+                          r"|[a-z](?:Env|Var|Name|File|Path|Label|Header|Field|Prompt|Placeholder|Hint|Policy|Regex|Pattern|Type|Length|Claim|Prefix|Suffix|Scheme|Cookie|Param|Attr|Attribute|Hash|Digest|Checksum|Fingerprint|Thumbprint|Selector|Algorithm|Alg|Algo)$", re.I)
 # Well-known documentation / tutorial sample secrets and obviously synthetic shapes.
-_SAMPLE_VALUE = re.compile(r"(?i)^(?:hunter2|letmein|qwerty\w*|s3cr3t\w*|secret\d*|password\d*|p@ss?w0rd\d*|passw0rd\d*|supersecret\w*|mysecret\w*|"
+_SAMPLE_VALUE = re.compile(r"(?i)^(?:hunter2\d*|letmein|qwerty\w*|s3cr3t\w*|secret\d*|password\d*|p@ss?w0rd\d*|passw0rd\d*|supersecret\w*|mysecret\w*|"
                            r"correct[-_ ]?horse\w*|(?:test|demo|mock|sample)[-_.]?[\w.-]*|\w*(?:abc123|abcdef|123456|12345678)\w*|(.)\1{5,})$")
 _VECTOR_MARK = re.compile(r"(?i)test[ _-]?vectors?|known[ _-]answer|\bKAT\b|\bRFC[ -]?\d{3,4}\b|wycheproof|ciphertext|plaintext|\bnonce\b")
 _VECTOR_PATH = re.compile(r"(?i)(?:^|[/._-])(?:vectors?|testvectors?|kat|rfc\d+|wycheproof)(?:[/._-]|$)")
@@ -469,10 +543,9 @@ def _generic_noise(rel: str, key: str, val: str, lines_all: list[str], i: int) -
             _VECTOR_PATH.search(rel) or any(_VECTOR_MARK.search(x) for x in lines_all[max(0, i - 11):i + 10])):
         return True   # hex key material inside a crypto known-answer test / RFC vector table
     toks = set(re.split(r"[/._-]+", rel.lower()))
-    if toks & _SMOKE_TOKENS and not _high_entropy_key(val):
-        window = "\n".join(lines_all[max(0, i - 4):i + 3])
-        if _RESERVED_ID.search(window):
-            return True   # smoke/packaging script logging in as a synthetic reserved-domain account
+    if not _high_entropy_key(val) and _RESERVED_ID.search("\n".join(lines_all[max(0, i - 4):i + 3])) and (
+            toks & _SMOKE_TOKENS or rel.lower().endswith((".json", ".http", ".yml", ".yaml", ".txt", ".sh"))):
+        return True   # smoke script / API request sample logging in as a synthetic reserved-domain (example.com) account
     return False
 
 
@@ -481,7 +554,7 @@ def _generic_noise(rel: str, key: str, val: str, lines_all: list[str], i: int) -
 # directory (or .po/.pot) the *generic* and URL-credential detectors only fire when the value is
 # TOKEN-SHAPED (ASCII, >=20 chars, no whitespace, letters+digits, entropy >= 3.5). Provider-format
 # tokens (ghp_, AKIA.., xox.., PEM keys ...) are never subject to this and are always reported.
-_LOCALE_PATH = re.compile(r"(?i)\.pot?$|(?:^|/)(?:language|languages|lang|langs|locale|locales|l10n|i18n|translations?|lc_messages)/")
+_LOCALE_PATH = re.compile(r"(?i)\.pot?$|(?:^|/)(?:(?-i:[a-z]{2,3}[-_](?:[A-Z]{2}|[A-Z][a-z]{3}|\d{3})(?:[-_][A-Za-z0-9]{2,4})?)|(?:en|de|fr|es|it|pt|ru|ja|zh|ko|nl|pl|sv|tr|cs|da|fi|nb|hu|ro|uk|ar|he|vi|th|el|bg|hr|sk|sl|sr|lt|lv|et|ca|eu|gl|fa|hi|bn|ms))\.(?:ya?ml|json|ini|properties|toml)$|(?:^|/)(?:language|languages|lang|langs|locale|locales|l10n|i18n|translations?|lc_messages)/")
 
 
 def _token_shaped(v: str) -> bool:
@@ -527,6 +600,10 @@ def sc_006(ctx: ScanContext):
                     or re.match(r"[A-Za-z0-9+/=]{16,}$|(?:Proc-Type|DEK-Info|Version|Comment):", nxt)
                 if "XXXX" in line or _TEST_PATH.search(rel) or not has_body:
                     hit = None  # documentation example / test vector / bare header constant
+            if hit and hit != "private key block":
+                tok = next(mm.group(0) for rx, nm in _PROVIDER if nm == hit for mm in [rx.search(line)] if mm)
+                if _sequential_run(tok, 10) or re.search(r"(.)\1{9,}", tok):
+                    hit = None  # iter3: hand-typed placeholder token (ascending 0123456789/abcdefghij run or one repeated char)
             if hit == "AWS access key ID" and "EXAMPLE" in line and (
                     re.search(r"(?i)example|docs?/|sample|test", rel) or _LOCALE_PATH.search(rel)):
                 hit = None  # AWS documentation sample key in docs/examples/tests
@@ -543,6 +620,7 @@ def sc_006(ctx: ScanContext):
                 elif uq:
                     m = _GENERIC_UQ.match(line)
                     if m and _looks_secret(m.group(1)) \
+                            and not (_LOCALE_PATH.search(rel) and not _token_shaped(m.group(1))) \
                             and not _generic_noise(rel, re.split(r"[:=]", m.group(0), maxsplit=1)[0], m.group(1), lines_all, i - 1):
                         hit = "hardcoded credential value in configuration"
                 if hit is None:
