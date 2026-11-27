@@ -1,4 +1,4 @@
-"""Validate the 16 Agent Skills under skills/."""
+"""Validate the 24 Agent Skills under skills/: 16 runner-integrated skills and 8 developer-workflow skills."""
 import re
 from pathlib import Path
 
@@ -8,14 +8,33 @@ from security_runner import catalog
 from security_runner.skillcheck import parse_frontmatter, validate_dir, validate_skill
 
 SKILLS = Path(__file__).resolve().parents[1] / "skills"
-EXPECTED = {
+RUNNER = {
     "security-start", "security-project-context", "security-do", "security-test-strategy",
     "security-coverage-analysis", "web-security-testing", "api-security-testing",
     "android-security-testing", "ios-security-testing", "desktop-security-testing",
     "supply-chain-security", "cloud-kubernetes-security", "ai-llm-security",
     "security-finding-validation", "security-regression-generation", "security-reporting",
 }
+DEV = {
+    "threat-modeling", "secure-coding-patterns", "authn-authz-implementation", "secrets-management",
+    "security-unit-testing", "security-code-review", "vulnerability-triage-and-fix", "security-ci-cd-integration",
+}
+EXPECTED = RUNNER | DEV
 DIRS = sorted(p for p in SKILLS.iterdir() if p.is_dir())
+RUNNER_DIRS = [p for p in DIRS if p.name in RUNNER]
+DEV_DIRS = [p for p in DIRS if p.name in DEV]
+FENCE = re.compile(r"^(```|~~~).*?^\1[^\n]*$", re.S | re.M)
+INLINE_CODE = re.compile(r"`+[^`\n]*`+")
+LINK = re.compile(r"\]\((?!https?:|#|mailto:)([^)\s]+)\)")
+
+
+def strip_code(text):
+    """Remove fenced code blocks and inline code so code that looks like a link is not parsed as one."""
+    return INLINE_CODE.sub("", FENCE.sub("", text))
+
+
+def broken_links(f):
+    return [t for t in LINK.findall(strip_code(f.read_text(encoding="utf-8"))) if not (f.parent / t.split("#")[0]).exists()]
 
 
 def md_files(d):
@@ -23,8 +42,9 @@ def md_files(d):
 
 
 def test_exact_skill_set():
-    assert {p.name for p in DIRS} == EXPECTED
-    assert len(DIRS) == 16
+    assert not (RUNNER & DEV) and len(RUNNER) == 16 and len(DEV) == 8
+    assert {p.name for p in DIRS} == RUNNER | DEV
+    assert len(DIRS) == 24
 
 
 def test_validate_dir_clean():
@@ -51,9 +71,19 @@ def test_spec_and_frontmatter(d):
 @pytest.mark.parametrize("d", DIRS, ids=lambda p: p.name)
 def test_relative_links_resolve(d):
     for f in md_files(d):
-        for target in re.findall(r"\]\((?!https?:|#|mailto:)([^)\s]+)\)", f.read_text(encoding="utf-8")):
-            path = target.split("#")[0]
-            assert (f.parent / path).exists(), f"{f}: broken link {target}"
+        assert broken_links(f) == [], f"{f}: broken link(s)"
+
+
+def test_link_check_ignores_code_but_catches_real_breaks(tmp_path):
+    (tmp_path / "ok.md").write_text("x")
+    f = tmp_path / "doc.md"
+    f.write_text("```sql\ngrep -E '(SELECT|INSERT)' [a](nope.md)\n```\nInline `grep (SELECT|INSERT)` and `[x](gone.md)` here.\n"
+                 "~~~\n[t](tilde-missing.md)\n~~~\nSee [ok](ok.md) and [web](https://example.com/x).\n")
+    assert broken_links(f) == []
+    f.write_text(f.read_text() + "A real [broken](missing.md#a) link.\n")
+    assert broken_links(f) == ["missing.md#a"]
+    f.write_text("```\nunclosed fence is not code\n```\n[bad](missing2.md)\n")
+    assert broken_links(f) == ["missing2.md"]
 
 
 @pytest.mark.parametrize("d", DIRS, ids=lambda p: p.name)
@@ -69,7 +99,7 @@ def test_check_ids_exist(d):
 LIVE = re.compile(r"live host|staging|production|deployed|against (?:a )?(?:server|host|endpoint|url)", re.I)
 
 
-@pytest.mark.parametrize("d", DIRS, ids=lambda p: p.name)
+@pytest.mark.parametrize("d", RUNNER_DIRS, ids=lambda p: p.name)
 def test_live_host_mentions_are_scope_gated(d):
     _, body = parse_frontmatter((d / "SKILL.md").read_text(encoding="utf-8"))
     if LIVE.search(body):
@@ -79,7 +109,7 @@ def test_live_host_mentions_are_scope_gated(d):
     assert "untrusted" in body
 
 
-@pytest.mark.parametrize("d", DIRS, ids=lambda p: p.name)
+@pytest.mark.parametrize("d", RUNNER_DIRS, ids=lambda p: p.name)
 def test_standalone_install_hint_and_fallback(d):
     body = (d / "SKILL.md").read_text(encoding="utf-8")
     assert "pip install git+https://github.com/shikari00007/security-test-automation" in body
@@ -87,6 +117,33 @@ def test_standalone_install_hint_and_fallback(d):
     assert "Without the CLI" in body
     for state in ("planned", "not_applicable", "blocked", "deferred", "executed", "needs_validation"):
         assert state in body
+
+
+def all_text(d):
+    return "\n".join(f.read_text(encoding="utf-8") for f in md_files(d))
+
+
+QUOTED = re.compile(r"[\"\u201c][^\"\u201d\n]*[\"\u201d]")
+EXAMPLE_MARK = re.compile(r"\bTODO\b|REPLACE_ME")
+LIVE_DEV = re.compile(r"live hosts?|staging|production|deployed|against (?:a )?(?:live )?(?:server|host|endpoint|url)", re.I)
+
+
+@pytest.mark.parametrize("d", DEV_DIRS, ids=lambda p: p.name)
+def test_dev_skill_rules(d):
+    text = (d / "SKILL.md").read_text(encoding="utf-8")
+    fm, body = parse_frontmatter(text)
+    assert fm["license"] == "MIT"
+    desc = fm["description"]
+    assert "Use when" in desc and "Not for" in desc
+    assert "Developer Preview" in body
+    assert (d / "references" / "VERIFICATION-NOTES.md").is_file(), "dev skills must ship references/VERIFICATION-NOTES.md"
+    for f in md_files(d):
+        # TODO / REPLACE_ME are allowed only inside code examples or when quoted as something to look for in reviewed code
+        prose = QUOTED.sub("", strip_code(f.read_text(encoding="utf-8")))
+        assert not EXAMPLE_MARK.search(prose), f"{f}: unresolved placeholder outside a code block"
+    both = all_text(d)
+    if LIVE_DEV.search(both):
+        assert re.search(r"authori[sz]ed|\bscope\b", both, re.I), "live-host mention needs an 'authorized' or 'scope' qualifier"
 
 
 def test_readme_attribution():

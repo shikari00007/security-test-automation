@@ -1,0 +1,136 @@
+{
+  "skill": "threat-modeling",
+  "route": {
+    "should_trigger": [
+      "We're about to build file attachments for notes in our Express + React app. Can you threat model it before I write any code?",
+      "what could go wrong with this design? it's a new webhook endpoint that upgrades a customer's plan",
+      "STRIDE the checkout service please, there's a diagram in docs/arch.md",
+      "draw me the data flow and trust boundaries for this repo, I need it for a design review",
+      "write abuse cases for the new /api/invite endpoint",
+      "We added a Redis queue and a Stripe integration since the last threat model. Update docs/security/threat-model.md",
+      "10 minute threat model for this PR? it touches the auth middleware and adds a role",
+      "I'm adding a RAG chatbot over customer documents to our Django app. What are the threats before we ship it, including privacy ones?",
+      "do we have a threat model? make a lightweight one we can keep in git",
+      "rank the risks of this architecture by impact and likelihood and tell me which test covers each"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "Run a security scan on our staging site and report what is vulnerable",
+        "better_skill": "security-do"
+      },
+      {
+        "prompt": "Which security checks should we run for this Flask API and in what order?",
+        "better_skill": "security-test-strategy"
+      },
+      {
+        "prompt": "Write down our roles, environments, test accounts and who authorized testing",
+        "better_skill": "security-project-context"
+      },
+      {
+        "prompt": "Semgrep flagged a SQL injection in orders.py, is it real?",
+        "better_skill": "security-finding-validation"
+      },
+      {
+        "prompt": "We fixed the IDOR on /api/orders/:id, generate a regression test that fails on the old code",
+        "better_skill": "security-regression-generation"
+      },
+      {
+        "prompt": "Test our REST API for broken object level authorization using two accounts",
+        "better_skill": "api-security-testing"
+      },
+      {
+        "prompt": "Run prompt injection tests against our support chatbot",
+        "better_skill": "ai-llm-security"
+      },
+      {
+        "prompt": "Check our lockfiles and CI pipeline for dependency confusion risk",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "Write a QA test plan for the checkout feature",
+        "better_skill": null
+      },
+      {
+        "prompt": "Turn the findings into a report for the client",
+        "better_skill": "security-reporting"
+      },
+      {
+        "prompt": "Review this PR diff for security problems before I merge it",
+        "better_skill": "security-code-review"
+      },
+      {
+        "prompt": "Implement role-based access control and tenant scoping for our notes API",
+        "better_skill": "authn-authz-implementation"
+      },
+      {
+        "prompt": "How should I validate and escape user input in this Express handler?",
+        "better_skill": "secure-coding-patterns"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "full-model-small-web-api",
+      "task": "Create a threat model for this app before we add a billing webhook.",
+      "setup": "Repo with React SPA, Express API (routes under src/routes), Postgres with workspace_id on tenant tables, an S3-style bucket in infra/storage.tf and src/webhooks/ empty. No docs/security directory. .agents/security-project-context.md exists listing roles anonymous/member/admin and tenancy multi.",
+      "rubric": [
+        "Reads .agents/security-project-context.md and does not re-ask roles or tenancy",
+        "Derives components and flows from code and cites at least three path:line or file references; marks unseen items as assumed",
+        "Produces a mermaid flowchart with subgraphs per trust zone and labelled flow ids",
+        "Applies STRIDE to each boundary crossing and includes the webhook (spoofing/tampering/replay) and cross-tenant object access threats",
+        "Every threat row has abuse case, impact 1-3, likelihood 1-3, risk equal to the product, stated reasoning, mitigation, status and a concrete test",
+        "Writes docs/security/threat-model.md in the template layout and does not claim the system is secure",
+        "Runs or offers the linter and reports counts (threats, with tests, proposed vs existing)"
+      ]
+    },
+    {
+      "id": "diff-mode-auth-change",
+      "task": "Threat model just this PR in ten minutes.",
+      "setup": "PR diff adds a 'viewer' role: changes src/middleware/authorize.ts, adds PATCH /api/members/:id accepting a role field, and adds an analytics call sending member email. docs/security/threat-model.md exists with T-001..T-006 and last_reviewed two months ago.",
+      "rubric": [
+        "Uses diff mode: identifies the trigger signals (auth code, new route, personal data to third party) before analysing",
+        "Sketches only the delta flows using existing node ids from the baseline diagram",
+        "Writes abuse cases for role escalation via mass assignment and for email disclosure to the analytics third party (LINDDUN data disclosure)",
+        "Scores with reasoning and names mitigation locations and tests, preferring a test added in the same PR",
+        "Outputs a PR comment in the delta format with a Not analysed line, and proposes new rows T-007 onward with unique ids and a bumped last_reviewed",
+        "Does not rewrite the whole model or run any scan against a host"
+      ]
+    },
+    {
+      "id": "no-boundary-change",
+      "task": "Quick threat model check on this PR please.",
+      "setup": "PR only changes CSS, README text and renames an internal helper function with updated unit tests. No routes, config, manifests, schema or integrations changed.",
+      "rubric": [
+        "Checks the diff against the trigger signals and finds none",
+        "Replies that there is no boundary change and the threat model is unchanged, without inventing threats",
+        "Does not edit docs/security/threat-model.md",
+        "Offers to escalate to a full model only if the user describes an architecture change"
+      ]
+    },
+    {
+      "id": "llm-feature-with-privacy",
+      "task": "We're adding an AI assistant that summarises customer tickets using an LLM with a search-over-tickets tool. Threat model it.",
+      "setup": "Python FastAPI service, vector store holding tickets from all tenants, a tool that can send email on behalf of the user, tickets contain customer personal data. Existing threat-model.md covers only the web app.",
+      "rubric": [
+        "Adds the LLM, vector store, tool and email flows to the diagram with the model treated as an untrusted process in its own zone",
+        "Uses OWASP LLM Top 10 2025 ids correctly for at least prompt injection (LLM01:2025), excessive agency (LLM06:2025) and vector/embedding weaknesses (LLM08:2025) and does not invent ids",
+        "Includes a tenant-isolation retrieval threat with a test where a tenant B query must not return tenant A tickets",
+        "Includes at least one LINDDUN-categorised privacy threat for personal data sent to a model provider",
+        "Hands execution of LLM tests to ai-llm-security and test mapping to authorization or security unit tests, rather than running probes itself",
+        "Appends to the existing model and changelog instead of replacing it"
+      ]
+    },
+    {
+      "id": "stale-model-update",
+      "task": "Update the threat model, we added a queue consumer and a partner API.",
+      "setup": "docs/security/threat-model.md last_reviewed 8 months ago with 9 threats, two with status accepted and no named owner. Repo now has src/consumers/orders.ts subscribing to a queue and src/partner/ with API-key auth.",
+      "rubric": [
+        "Reads the existing model, preserves existing ids and rows, and adds new flows and threats with new ids",
+        "Flags the two accepted threats lacking an owner and asks for or proposes an owner and revisit trigger",
+        "Covers queue poisoning and re-authorization at consume time, and partner API key spoofing, leakage and rate limiting",
+        "Bumps last_reviewed and adds a changelog line",
+        "Runs the linter or states it was not run, and does not mark any new threat implemented without a test or code location"
+      ]
+    }
+  ]
+}

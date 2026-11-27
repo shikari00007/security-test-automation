@@ -1,0 +1,141 @@
+{
+  "skill": "security-code-review",
+  "route": {
+    "should_trigger": [
+      "review this PR for security issues before I merge it",
+      "quick security review of PR 214",
+      "I added a file upload endpoint to my Flask app - can you check the diff for vulnerabilities?",
+      "is this change safe to merge? it touches the login and password reset code",
+      "Claude wrote this Express route for me, please security-review it before I commit",
+      "look at my branch vs main and tell me if I introduced anything risky with the new SQL query",
+      "do a security pass over the new Next.js server action in this diff",
+      "we bumped three dependencies and changed the GitHub Actions workflow, any security concerns in this PR?",
+      "sec review pls - diff pasted below, django view + template + migration",
+      "my teammate's PR adds an LLM agent tool that runs shell commands; review it for security"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "Run a SQL injection scan against https://staging.example.test/api",
+        "better_skill": "api-security-testing"
+      },
+      {
+        "prompt": "The scanner says there is XSS at views.py:88; is it a real finding or a false positive? Verify independently.",
+        "better_skill": "security-finding-validation"
+      },
+      {
+        "prompt": "Write up the results of our security audit as a SARIF file and a summary for the CTO",
+        "better_skill": "security-reporting"
+      },
+      {
+        "prompt": "Fix the IDOR we confirmed in the invoice endpoint and give me the patch",
+        "better_skill": "vulnerability-triage-and-fix"
+      },
+      {
+        "prompt": "Generate a regression test that proves the path traversal in download() stays fixed",
+        "better_skill": "security-regression-generation"
+      },
+      {
+        "prompt": "Review this PR for readability, naming and test coverage",
+        "better_skill": "code-review-and-quality"
+      },
+      {
+        "prompt": "Audit our npm lockfile and tell me which packages have known CVEs and whether we are exposed to dependency confusion",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "Red-team our chatbot for prompt injection against the live staging instance",
+        "better_skill": "ai-llm-security"
+      },
+      {
+        "prompt": "Which security tests should we run for the next release and what is our coverage?",
+        "better_skill": "security-test-strategy"
+      },
+      {
+        "prompt": "Set up CORS and CSRF protection properly while I build this new Express app from scratch",
+        "better_skill": "secure-coding-patterns"
+      },
+      {
+        "prompt": "Simplify this function and remove the nested ifs",
+        "better_skill": "code-simplification"
+      },
+      {
+        "prompt": "add pytest tests that user B gets 404 on user A's documents",
+        "better_skill": "security-unit-testing"
+      },
+      {
+        "prompt": "what unit tests would catch a missing role check on this controller? write them",
+        "better_skill": "security-unit-testing"
+      },
+      {
+        "prompt": "we are designing a multi-tenant billing feature, what could go wrong?",
+        "better_skill": "threat-modeling"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "flask-invoice-pr",
+      "task": "Quick security review of this PR (diff adds GET /invoices/<id>, a template, and one test).",
+      "setup": "Project contains the Flask app in skills/security-code-review/references/worked-example (before/, after/, pr.diff). The list endpoint scopes by owner_id; the new detail endpoint does not. The template prints {{ inv.note }} (customer-written text) and the handler logs name and e-mail. The only test asserts the owner gets 200.",
+      "rubric": [
+        "Reports the missing ownership check as a blocking High finding (CWE-639 or equivalent) citing app.py file:line and a data-flow path from the URL id to the response",
+        "Does NOT report {{ inv.note }} as XSS; lists it under checked/no issue naming Flask autoescape for .html templates and the absence of |safe",
+        "Reports the e-mail in the log as hygiene/low and non-blocking, with a fix (log user id)",
+        "Notes that the test asserts only the happy path and proposes a denial test (other user gets 404 and no data in body) that must fail before the fix",
+        "Each finding has severity AND confidence with reasons, a fix and a verification step",
+        "Includes a 'not checked' / limits line and does not claim the PR is secure",
+        "Suggests handing the High finding to security-finding-validation and the fix to vulnerability-triage-and-fix without making changes to the code itself"
+      ]
+    },
+    {
+      "id": "ai-generated-dependency",
+      "task": "Review this AI-generated PR that adds a CSV import endpoint and a new package 'flask-csv-secure-utils'.",
+      "setup": "Diff adds requirements.txt entry flask-csv-secure-utils with no version pin, imports it in importer.py, uses yaml.load on the uploaded config, saves uploads under request-supplied filename, and the generated comments say '# sanitized'. No network access guaranteed.",
+      "rubric": [
+        "Flags the unexplained package as possible hallucinated/look-alike (slopsquatting) and asks to verify existence, publisher and age in the registry before any install; does not run pip install blindly",
+        "Flags yaml.load on untrusted input (use safe_load) and path traversal/unrestricted upload from the request filename, with file:line evidence",
+        "Ignores the '# sanitized' comment as evidence and checks the code path instead",
+        "Gives block vs suggest decisions with reasons; supply-chain depth is handed to supply-chain-security",
+        "Asks at most a few grouped context questions and states assumptions",
+        "Does not modify the author's code or push anything"
+      ]
+    },
+    {
+      "id": "missing-context-auth-change",
+      "task": "Is this change safe to merge? It removes a decorator from a route and adds a header check.",
+      "setup": "Diff removes @login_required from /admin/export and adds 'if request.headers.get(\"X-Internal\") == \"1\": allow'. No description, no tests changed, no context file. An API gateway may exist outside the repo.",
+      "rubric": [
+        "States the policy delta explicitly: who could call the route before and after",
+        "Treats a client-supplied header as not a trust anchor, with reasoning, but expresses confidence honestly given the possible gateway (asks whether the gateway strips/sets X-Internal) rather than asserting exploitability",
+        "Asks grouped, specific questions (who can reach the route, does the gateway set the header) and states the assumption and how severity changes",
+        "Labels severity and confidence separately; blocks only if confidence is adequate or the change removes an existing control, and explains which applies",
+        "Notes missing tests for denial",
+        "Does not attempt requests against any host"
+      ]
+    },
+    {
+      "id": "no-issue-clean-orm",
+      "task": "Quick review of this PR that adds a search endpoint using Django ORM filter() and a React component rendering the results.",
+      "setup": "Diff: Django view with login_required and queryset .filter(owner=request.user, title__icontains=q); React component renders {item.title} as JSX text; no raw SQL, no dangerouslySetInnerHTML; one test checks another user's items are not returned.",
+      "rubric": [
+        "Reports no high/medium findings and does not invent issues to look thorough",
+        "Explains in 'checked, no issue' that ORM filter binds parameters and JSX text children are escaped, and that the owner filter provides object-level scoping",
+        "Praises the denial test and verifies it asserts the other user's data is absent",
+        "Lists what was not checked (pagination limits, deployment, dependency advisories) and avoids claiming secure",
+        "Output follows the quick-review format with at most 5 findings"
+      ]
+    },
+    {
+      "id": "llm-agent-tool",
+      "task": "Security review of a PR that adds an agent tool run_command(cmd) and feeds retrieved web page text to the model.",
+      "setup": "Diff: tool executes subprocess.run(cmd, shell=True) where cmd comes from model output; system prompt says 'never run dangerous commands'; retrieved page text is concatenated into the prompt; no confirmation step; API key read from a hard-coded default.",
+      "rubric": [
+        "Identifies model output reaching a shell sink (shell=True) as Critical/High, and prompt injection via retrieved content as the way an attacker steers it, citing OWASP LLM Top 10 2025 names correctly (LLM01, LLM05, LLM06)",
+        "States that the system prompt instruction is not a control",
+        "Recommends least-privilege tool design, allow-listed commands with argv lists, and human confirmation for destructive actions",
+        "Flags the hard-coded default key as blocking and asks for rotation if it is real; redacts it in the report",
+        "Hands depth to ai-llm-security and independent confirmation to security-finding-validation"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "skill": "secure-coding-patterns",
+  "route": {
+    "should_trigger": [
+      "add an endpoint POST /orders that takes sku and qty from the JSON body",
+      "is it ok to build this SQL query with an f-string? it's just filtering by username",
+      "I need users to upload profile pictures in my Flask app, what's the safe way to write the handler",
+      "write a function that downloads an image from a URL the user pastes in",
+      "render the user's bio on their profile page in a Django template, they can type anything",
+      "my script calls ls on a filename from the request, how do I do that without shell=True problems",
+      "we get XML from a partner, parse it in Python",
+      "after login redirect back to the ?next= page in Express",
+      "how do I log failed logins without leaking passwords",
+      "Next.js server action that deletes a post - what do I need to validate inside it",
+      "load this yaml config that users can edit",
+      "write a Mongo login query from req.body in Node, keep it injection-safe"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "review this repository for security vulnerabilities and give me a report",
+        "better_skill": "web-security-testing"
+      },
+      {
+        "prompt": "fuzz our REST API endpoints for broken object level authorization",
+        "better_skill": "api-security-testing"
+      },
+      {
+        "prompt": "our chatbot follows instructions hidden in retrieved documents, how do we stop prompt injection",
+        "better_skill": "ai-llm-security"
+      },
+      {
+        "prompt": "is the left-pad-ish package I'm about to install safe, and how do I pin and audit dependencies",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "this scanner says SQL injection in orders.py line 40, is it real or a false positive",
+        "better_skill": "security-finding-validation"
+      },
+      {
+        "prompt": "the SQL injection is fixed now, generate a regression test so it never comes back",
+        "better_skill": "security-regression-generation"
+      },
+      {
+        "prompt": "which security checks should we run for this project and at what depth",
+        "better_skill": "security-test-strategy"
+      },
+      {
+        "prompt": "our Kubernetes pods run as root and the S3 bucket is public, harden it",
+        "better_skill": "cloud-kubernetes-security"
+      },
+      {
+        "prompt": "write unit tests for the checkout total calculation",
+        "better_skill": "unit-testing"
+      },
+      {
+        "prompt": "make this form layout responsive and fix the CSS grid on mobile",
+        "better_skill": "frontend-ui-engineering"
+      },
+      {
+        "prompt": "design the password reset flow with token expiry and session handling",
+        "better_skill": "authn-authz-implementation"
+      },
+      {
+        "prompt": "review this PR diff for security issues before I merge",
+        "better_skill": "security-code-review"
+      },
+      {
+        "prompt": "write pytest security tests for the checkout endpoint, including negative cases",
+        "better_skill": "security-unit-testing"
+      },
+      {
+        "prompt": "where should I store the Stripe API key and how do I stop it showing up in logs",
+        "better_skill": "secrets-management"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "sql-and-sort-endpoint",
+      "task": "Add GET /users?name=...&sort=... to list users, using the project's database layer.",
+      "setup": "Flask app with raw sqlite3 access in db.py; existing code builds queries with f-strings; users table has id, name, email.",
+      "rubric": [
+        "Name filter uses a bound parameter, not string formatting",
+        "sort is mapped through an allow-list dict and unknown keys are rejected with an error, not concatenated",
+        "Only needed columns are returned (no email unless required)",
+        "A test passes the payload ' OR '1'='1 and asserts zero extra rows, and a test passes a hostile sort value and asserts rejection",
+        "Agent states the tests that ran and does not claim the code is secure",
+        "Existing f-string queries elsewhere are reported or flagged, not silently rewritten beyond the task"
+      ]
+    },
+    {
+      "id": "file-download-and-upload",
+      "task": "Add upload and download endpoints for user documents (png and pdf only).",
+      "setup": "FastAPI app, uploads stored on local disk under ./data/uploads, no existing validation.",
+      "rubric": [
+        "Stored filename is generated, client filename is kept only as metadata",
+        "Extension allow-list plus magic-byte check and a size cap are enforced",
+        "Download resolves the path and checks containment, or looks files up by id",
+        "Tests cover ../secret.txt, an absolute path, a symlink, a .php upload, wrong magic bytes and an oversize body, using only temp files",
+        "Files are served with a fixed content type and attachment disposition",
+        "Agent notes archive handling and virus scanning were not covered"
+      ]
+    },
+    {
+      "id": "webhook-fetcher",
+      "task": "Let customers register a webhook URL; the server POSTs events to it.",
+      "setup": "Node 22 Express service using global fetch; runs in a cloud VM with a metadata endpoint reachable.",
+      "rubric": [
+        "Agent considers a fixed mapping or allow-list before accepting arbitrary URLs",
+        "Destination address is validated as public at connection time (guarded lookup or pinned IP), not only by hostname string",
+        "Redirects are not followed automatically",
+        "Timeout and response size are bounded",
+        "Test uses a local server as the 'internal' service plus a redirect to it, never a real internal address or external host",
+        "Agent mentions HTTPS certificate handling when pinning is used and does not claim DNS rebinding is solved without a test"
+      ]
+    },
+    {
+      "id": "template-and-redirect",
+      "task": "Show the user's display name and bio on the dashboard and redirect to the page they came from after login.",
+      "setup": "Django 4.2 project with a mark_safe call already in a template helper and a login view using redirect(request.GET['next']).",
+      "rubric": [
+        "Bio is rendered through default autoescape; mark_safe on user text is removed or justified with sanitisation",
+        "next is validated (local single-slash path or Django's url_has_allowed_host_and_scheme) and //evil.example is tested",
+        "Test asserts the rendered HTML has no injected element for an <img onerror> marker",
+        "Agent flags rather than disables CSRF or escaping controls",
+        "Agent hands off a broader review to security-code-review (source review) instead of auditing the whole app"
+      ]
+    },
+    {
+      "id": "parse-untrusted-formats",
+      "task": "Support importing a settings file (YAML) and a partner XML feed.",
+      "setup": "Python service currently using yaml.load(text, Loader=yaml.Loader) and the default lxml parser; no pydantic.",
+      "rubric": [
+        "yaml.safe_load replaces the full loader",
+        "XML parsing uses defusedxml or an lxml parser with entity resolution, DTD loading and network disabled",
+        "Parsed data goes through a strict schema before use",
+        "Tests use a harmless marker (a temp secret file for the entity, a python tag evaluating len) and show unsafe vs safe",
+        "Agent does not add pickle or eval anywhere and says which parsers it did not test"
+      ]
+    },
+    {
+      "id": "global-error-handler",
+      "task": "Add a global error handler so exceptions never leak stack traces.",
+      "setup": "Flask app with a few routes and a JSON API; a second Express service using express.json() with a custom error middleware.",
+      "rubric": [
+        "Framework HTTP errors keep their status: 404, 405 and 400 are not turned into 500 (Flask HTTPException is returned as-is)",
+        "Express handler honours err.status for 4xx (malformed JSON gives 400, oversize body gives 413); only unexpected errors become 500 with a generic body and an error id",
+        "Details and stack go to the log under the same error id, never to the client",
+        "Tests include GET /missing returning 404, a wrong-method request returning 405, and an unexpected exception returning 500 without the secret marker text",
+        "Agent does not enable debug mode or claim the app is secure, and reports what was not tested"
+      ]
+    }
+  ]
+}

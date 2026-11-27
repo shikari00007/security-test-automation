@@ -1,11 +1,24 @@
 """Agent Skills specification validator (https://agentskills.io/specification)."""
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 ALLOWED = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+
+
+def _scalar(v: str) -> str:
+    """Unquote a YAML flow scalar: double-quoted (JSON-compatible escapes), single-quoted ('' -> ')."""
+    if len(v) >= 2 and v[0] == v[-1] == '"':
+        try:
+            return json.loads(v)
+        except ValueError:
+            return v[1:-1]
+    if len(v) >= 2 and v[0] == v[-1] == "'":
+        return v[1:-1].replace("''", "'")
+    return v
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -24,14 +37,14 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
             fm.setdefault(cur, {})
             if not isinstance(fm[cur], dict):
                 raise ValueError(f"{cur} mixes scalar and map")
-            fm[cur][k.strip()] = v.strip().strip("\"'")
+            fm[cur][k.strip()] = _scalar(v.strip())
             continue
         k, sep, v = line.partition(":")
         if not sep:
             raise ValueError(f"bad frontmatter line {line!r}")
         cur = k.strip()
         v = v.strip()
-        fm[cur] = v.strip("\"'") if v else {}
+        fm[cur] = _scalar(v) if v else {}
     return fm, m.group(2)
 
 

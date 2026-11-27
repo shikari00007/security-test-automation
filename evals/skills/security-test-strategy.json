@@ -1,0 +1,104 @@
+{
+  "skill": "security-test-strategy",
+  "route": {
+    "should_trigger": [
+      "we have two days for security on this app. what do we check first and what do we consciously skip?",
+      "give me a test plan for security: it's an Android client plus a GraphQL backend on AWS",
+      "Why did the plan mark the SSRF check as blocked? And can you tell me which checks are not applicable to a static site?",
+      "should we do Quick or Deep on this repo? it handles medical records but it's a tiny CRUD app",
+      "prioritise the security checks by risk for our fintech API, the team can only do about 8 hours",
+      "plan only, don't run anything. which security checks apply to a Electron + Rust updater project and what tools would each need",
+      "what would a Standard review include vs Quick? list the differences for our stack (Rails, Sidekiq, Terraform)",
+      "Can you decide which security checks to leave out for our internal tool and write down why, so the auditor sees the exclusions are deliberate?",
+      "i need a risk-ranked list of what to test security-wise; we're a 3-person startup w/ a next.js app + supabase",
+      "which checks need network access or a running instance and which can be done from source alone?",
+      "map our detected domains to checks and give me the plan, flag anything we can't do without credentials"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "Execute the Standard plan now",
+        "better_skill": "security-do"
+      },
+      {
+        "prompt": "After the run: 31 applicable, 22 executed, 6 blocked, 3 NA. what does that say about our posture?",
+        "better_skill": "security-coverage-analysis"
+      },
+      {
+        "prompt": "Plan the QA test strategy for the release: unit, integration, e2e split",
+        "better_skill": null
+      },
+      {
+        "prompt": "What's the overall test plan for our new checkout? regression, perf, cross-browser",
+        "better_skill": null
+      },
+      {
+        "prompt": "I just opened the repo, what's even in here? what kind of app",
+        "better_skill": "security-start"
+      },
+      {
+        "prompt": "Plan an attack path: how would I get from the public API to the prod database on db.acme.net",
+        "better_skill": null
+      },
+      {
+        "prompt": "prioritise which security bugs to fix first from this list of 40 findings",
+        "better_skill": "vulnerability-triage-and-fix"
+      },
+      {
+        "prompt": "We need a strategy for testing our LLM feature's answer quality over time",
+        "better_skill": null
+      },
+      {
+        "prompt": "Which JWT library should I use for signing tokens in Go?",
+        "better_skill": "authn-authz-implementation"
+      },
+      {
+        "prompt": "choose which unit tests to write first for the payment module, risk-based",
+        "better_skill": null
+      },
+      {
+        "prompt": "Help me threat model the new file sharing feature before we build it",
+        "better_skill": "threat-modeling"
+      },
+      {
+        "prompt": "write the pytest for the auth bypass finding",
+        "better_skill": "security-regression-generation"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "plan-with-blocked-and-excluded",
+      "task": "Make the security test plan for this project. We have no running environment and no test accounts.",
+      "setup": "Express API with openapi.yaml, a Dockerfile, GitHub workflows and a React SPA. Context record lists no environments and no credentials.",
+      "rubric": [
+        "Plan lists each check with applicability status and the evidence it is based on",
+        "Checks needing a running instance or accounts (e.g. BOLA with two users) are marked blocked with a stated reason, not dropped",
+        "States tools and access required per check",
+        "Contains an explicit exclusions section (e.g. DoS, credential attacks, live probing)",
+        "Does not execute any check"
+      ]
+    },
+    {
+      "id": "profile-choice-under-time-box",
+      "task": "We handle payments and only have a half day. Quick, Standard or Deep?",
+      "setup": "Medium Django monolith with Stripe integration, JWT auth, Celery workers, Terraform for AWS RDS and S3.",
+      "rubric": [
+        "Recommends a profile and justifies with the detected risk (payments, auth, public cloud storage)",
+        "Shows what is included and what is explicitly NOT covered at the chosen depth",
+        "Prioritises authorization, payment webhook validation, and storage exposure checks first",
+        "Does not promise that the chosen profile will make the system secure"
+      ]
+    },
+    {
+      "id": "skeptical-user-wants-skipped-checks-explained",
+      "task": "The last plan skipped 9 checks. Justify each skip, I think you're hiding stuff.",
+      "setup": "A prior plan file with 9 entries: 4 not_applicable (no mobile code), 3 blocked (needs staging creds), 2 excluded (DoS, brute force).",
+      "rubric": [
+        "Groups the 9 into the three categories with their different meaning (NA vs blocked vs excluded)",
+        "For each blocked check states exactly what is needed to unblock it",
+        "Does not reclassify blocked checks as not-applicable to make the plan look cleaner",
+        "Offers to include the 2 excluded checks only if they are outside scope concerns, otherwise keeps them excluded"
+      ]
+    }
+  ]
+}

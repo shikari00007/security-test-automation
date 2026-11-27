@@ -1,0 +1,142 @@
+{
+  "skill": "authn-authz-implementation",
+  "route": {
+    "should_trigger": [
+      "add login and signup to my FastAPI app",
+      "how should I store passwords? we're using Django",
+      "implement JWT auth for our Express API, what do I need to validate?",
+      "users can fetch other users' orders by changing the id in the URL, help me fix it properly",
+      "we need roles (admin, editor, viewer) and per-endpoint permissions in our Flask service",
+      "make our SaaS multi-tenant safe so one customer can never see another's rows",
+      "add Sign in with Google to the Next.js app",
+      "build a forgot password flow",
+      "how do I do logout so the session really dies? and timeouts?",
+      "set up rate limiting and lockout on the login endpoint without letting attackers lock people out",
+      "Add TOTP or passkeys as a second factor",
+      "my PATCH /profile endpoint lets people set is_admin, how do I stop that"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "Run a security review of our OpenAPI spec for BOLA and BFLA issues",
+        "better_skill": "api-security-testing"
+      },
+      {
+        "prompt": "Check our web app for XSS, CSP and clickjacking problems",
+        "better_skill": "web-security-testing"
+      },
+      {
+        "prompt": "We fixed an IDOR last week; write a regression test that pins it",
+        "better_skill": "security-regression-generation"
+      },
+      {
+        "prompt": "Which security checks should we plan for the next release?",
+        "better_skill": "security-test-strategy"
+      },
+      {
+        "prompt": "Write pytest tests that check users can't read each other's data in our existing app",
+        "better_skill": "security-unit-testing"
+      },
+      {
+        "prompt": "Scan our staging server for weak credentials and brute force the admin login",
+        "better_skill": "api-security-testing"
+      },
+      {
+        "prompt": "Audit our npm dependencies for vulnerable packages",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "Test that our LLM chatbot resists prompt injection",
+        "better_skill": "ai-llm-security"
+      },
+      {
+        "prompt": "Document our app type, environments and test accounts for later reviews",
+        "better_skill": "security-project-context"
+      },
+      {
+        "prompt": "Review this PR that changes our auth middleware for security problems",
+        "better_skill": "security-code-review"
+      },
+      {
+        "prompt": "Where should I keep the JWT signing key and rotate it?",
+        "better_skill": "secrets-management"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "bola-fix-with-matrix",
+      "task": "Users report that GET /invoices/{id} returns other customers' invoices. Fix it and prove it.",
+      "setup": "FastAPI app, 8 routes, handlers call Invoice.get(id) directly; invoices have owner_id and tenant_id; JWT auth already resolves a user; pytest present; no permission map.",
+      "rubric": [
+        "Creates a permission map as data covering every route",
+        "Adds a completeness test that fails when a route is missing from the map",
+        "Writes an object-level test with two users in one tenant and one in another and runs it red before the fix",
+        "Replaces raw get(id) with one scoped loader using tenant and owner from the authenticated principal",
+        "Applies the same scope to list/update/delete handlers",
+        "Returns 404 (or documented choice) for foreign objects",
+        "Demonstrates the test failing when the check is removed, then restores it",
+        "Reports 'these checks passed' with counts and does not claim the app is secure"
+      ]
+    },
+    {
+      "id": "password-and-session-login",
+      "task": "Implement username/password login with sessions for a Flask app.",
+      "setup": "Flask 3 app with a users table storing sha256 password hashes and a client-side signed session cookie.",
+      "rubric": [
+        "Chooses Argon2id (min m=19456 KiB, t=2, p=1) or scrypt (N=2^17, r=8, p=1) and cites the OWASP cheat sheet parameters",
+        "Plans migration: rehash on successful login, no plaintext handling",
+        "Uses constant-time comparison and a dummy-hash path so unknown users and wrong passwords look identical",
+        "Rotates the session at login and destroys it server-side at logout, noting signed client cookies cannot be revoked",
+        "Sets Secure, HttpOnly, explicit SameSite and __Host- prefix",
+        "Adds idle and absolute timeouts tested with an injected clock",
+        "Adds rate limiting with delay rather than permanent lockout, using a shared store",
+        "Does not disable or weaken CSRF or other controls to make tests pass"
+      ]
+    },
+    {
+      "id": "oauth-oidc-login",
+      "task": "Add Sign in with an OIDC provider to a Next.js app.",
+      "setup": "Next.js App Router app, no existing SSO, Auth.js available, tokens currently planned for localStorage.",
+      "rubric": [
+        "Uses authorization code flow with PKCE S256, not implicit",
+        "Binds state and nonce to the server-side session and verifies them on callback",
+        "Validates ID token iss, aud, exp, nonce and identifies the user by iss+sub, not email",
+        "Exact redirect URI registration",
+        "Keeps tokens server-side or in HttpOnly cookies, not localStorage",
+        "Checks the session inside each route handler and does not rely on middleware alone, mentioning CVE-2025-29927 patching",
+        "Prefers a maintained library and says which docs to check for current options",
+        "Cites RFC 9700 and ASVS 5.0 V10 correctly"
+      ]
+    },
+    {
+      "id": "tenant-and-mass-assignment",
+      "task": "Add a PATCH /users/me endpoint and team-scoped project routes to a multi-tenant Express API.",
+      "setup": "Express 5 app; existing code does Object.assign(user, req.body) and reads tenantId from a header.",
+      "rubric": [
+        "Flags tenant id from header as a cross-tenant risk and takes it from the verified session",
+        "Replaces Object.assign with an allowlist or strict schema rejecting unknown fields",
+        "Test sends role/isAdmin/ownerId and asserts rejection and unchanged state",
+        "Verifies foreign ids referenced in POST bodies belong to the caller's tenant",
+        "Registers routes through a registrar or global guard that fails on missing policy",
+        "Generates a role-by-endpoint test matrix from the permission map",
+        "Admin routes require admin role from the map and are tenant-scoped",
+        "Lists limitations such as untested business logic"
+      ]
+    },
+    {
+      "id": "jwt-verification",
+      "task": "Review and fix our token verification: services accept any JWT signed by our key.",
+      "setup": "Python service calls jwt.decode(token, key, options={'verify_signature': True}) with no algorithms, audience or issuer; tokens live 30 days and carry role claims.",
+      "rubric": [
+        "Requires explicit algorithms allowlist and rejects none",
+        "Requires and validates exp, iss, aud with a service-specific audience",
+        "Explains key rotation using kid and overlap, with keys from configuration",
+        "Shortens token TTL and re-reads role from the database for sensitive actions or justifies otherwise",
+        "Adds tests for alg=none, wrong aud, expired and tampered tokens that run and pass",
+        "Considers opaque tokens versus JWT using the decision table",
+        "Cites RFC 8725 and ASVS 5.0 V9 accurately",
+        "Does not hand-roll crypto beyond a verified library"
+      ]
+    }
+  ]
+}
