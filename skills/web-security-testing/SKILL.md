@@ -1,6 +1,6 @@
 ---
 name: web-security-testing
-description: "Reviews web application code and configuration for authentication, session, access control, injection, XSS, CSRF, headers, SSRF, file handling and enterprise SSO (SAML/OIDC/LDAP) weaknesses, offline first with optional authorized lab testing. Use when a repository contains a web frontend or server-rendered app, or the user asks for a web security review. Not for: pure API contracts (api-security-testing), mobile or desktop clients, scanning hosts without written scope, brute force, or DoS."
+description: "Use when the user says things like \"check my Flask/Django/Express/Rails app for XSS\", \"is this template XSS-safe\", \"review login, session and logout security\", \"CSRF, cookie flags and security headers\", \"JWT in localStorage\", \"open redirect or CORS config\", \"file upload safety\", or \"our SAML/OIDC/LDAP login\". Reviews server-rendered and frontend web app code and config offline for authentication, session, access control, injection, XSS, CSRF, headers, SSRF, file handling and enterprise SSO weaknesses; optional authorized lab testing. Not for: pure API contracts, BOLA or JWT review of REST/GraphQL endpoints (api-security-testing), mobile or desktop clients, scanning live hosts without written scope, brute force, DoS, cookie-consent banners (compliance-testing). Related: api-security-testing, security-finding-validation."
 license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:

@@ -1,0 +1,14 @@
+{
+  "name": "notes-express-security-template",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Synthetic Express app with intentional security bugs plus Jest/Supertest security tests",
+  "scripts": {
+    "test": "jest --runInBand",
+    "test:vulnerable": "SUT_FIXED=0 jest --runInBand",
+    "test:fixed": "SUT_FIXED=1 jest --runInBand"
+  },
+  "dependencies": { "express": "^5.1.0", "jsonwebtoken": "^9.0.2" },
+  "devDependencies": { "jest": "^30.0.0", "supertest": "^7.1.0" },
+  "jest": { "testEnvironment": "node", "testMatch": ["**/tests/security/**/*.test.js"] }
+}

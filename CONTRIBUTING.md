@@ -97,6 +97,19 @@ Steps:
 
 Do not copy prose from other projects' skills. Methodology may be *informed* by them; credit it in `docs/THIRD-PARTY.md`.
 
+## Authoring and validating skills
+
+Each skill lives in `skills/<name>/SKILL.md` with on-demand files under `references/`. Keep the description specific: say what the skill does, include a `Use when` clause and a `Not for` clause naming the neighbouring skill, and keep it under 1024 characters and the body under 200 lines. Put routing examples for the skill in `evals/skills/<name>.json` (prompts that should and should not load it).
+
+Run both checks before opening a pull request:
+
+```bash
+python3 scripts/skill_evals.py validate
+python3 scripts/skill_collisions.py --max-unreviewed 0
+```
+
+`validate` checks the Agent Skills frontmatter, the eval files, the 1024-character description limit and a description lint (name equals directory, ends with punctuation, `Use when`, `Not for`, body length). Existing lint findings are recorded in `evals/lint-baseline.json`; the baseline may only shrink. `skill_collisions.py` compares skill descriptions by TF-IDF cosine similarity and fails if two skills overlap enough to compete for the same prompts, unless the pair is reviewed in `evals/collision-allowlist.json`. The full test suite (`python3 -m pytest tests -q`) runs the same checks.
+
 ## Contributing a security check
 
 A check is a meaningful, repeatable security assertion. Only **reviewed** checks can execute; they have three parts that must stay in sync.

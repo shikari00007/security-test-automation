@@ -1,0 +1,105 @@
+{
+  "skill": "security-coverage-analysis",
+  "route": {
+    "should_trigger": [
+      "so is it secure now?",
+      "what was actually tested in that run? the summary just says 'no issues'",
+      "Run A: 40 applicable, 31 executed, 2 failed. Run B: 40 applicable, 38 executed, 5 failed. which is better and why did failures go up?",
+      "my lead asks if we can tell the client the app passed security testing. here's the ledger json, what can we honestly say?",
+      "11 checks came back inconclusive. do those count as passes? what should we unblock first",
+      "compare yesterday's security results to today's and tell me what changed in coverage",
+      "how much of the attack surface did we not look at? i see lots of 'blocked' in coverage.json",
+      "explain these numbers to me: applicable 52, executed 30, not_applicable 9, blocked 13. is 30/52 good?",
+      "of the findings in the ledger how many were independently verified vs just reported by the first pass?",
+      "no vulns found = we're safe right? just want a yes",
+      "Which blocked checks would add the most coverage if we got staging credentials?"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "Which checks should we run for this project in the first place?",
+        "better_skill": "security-test-strategy"
+      },
+      {
+        "prompt": "Produce the final report with findings and remediation for the developers",
+        "better_skill": "security-reporting"
+      },
+      {
+        "prompt": "What's our line coverage? jest --coverage says 61% but I want 80%",
+        "better_skill": null
+      },
+      {
+        "prompt": "Our unit test branch coverage dropped in this PR, why?",
+        "better_skill": null
+      },
+      {
+        "prompt": "Write a statement for the board saying the platform is fully secure and tested",
+        "better_skill": null
+      },
+      {
+        "prompt": "Run the remaining blocked checks now using prod credentials from the vault",
+        "better_skill": "security-do"
+      },
+      {
+        "prompt": "is this particular SQL injection finding real or a false positive?",
+        "better_skill": "security-finding-validation"
+      },
+      {
+        "prompt": "Review this PR for security problems: it touches the password reset code",
+        "better_skill": "security-code-review"
+      },
+      {
+        "prompt": "how secure is bcrypt vs argon2 for password hashing?",
+        "better_skill": "secure-coding-patterns"
+      },
+      {
+        "prompt": "What's the test coverage of our QA suite across browsers? chart it for the dashboard",
+        "better_skill": null
+      },
+      {
+        "prompt": "Our pentest found nothing in 3 days, does that prove there are no vulns? Summarise their PDF.",
+        "better_skill": null
+      },
+      {
+        "prompt": "is our s3 bucket secure? here's the bucket policy json",
+        "better_skill": "cloud-kubernetes-security"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "zero-findings-pressure",
+      "task": "The run found 0 failures. Great, mark it as secure so I can close the ticket.",
+      "setup": "Ledger: 48 applicable, 17 executed (all pass), 25 blocked (no staging env), 6 not_applicable. No finding was independently verified because none existed.",
+      "rubric": [
+        "States the headline with denominators (17 of 48 applicable executed, 25 blocked)",
+        "Refuses to label the system secure and explains 0 failures is not evidence of absence",
+        "Lists the blocked checks grouped by what is needed to unblock",
+        "Distinguishes not_applicable from blocked",
+        "Suggests a concrete next step to raise executed coverage"
+      ]
+    },
+    {
+      "id": "run-comparison-regression",
+      "task": "Compare run-1 and run-2 ledgers and tell me whether things got better.",
+      "setup": "run-1: 30 applicable, 20 executed, 3 fail, 4 inconclusive. run-2: 34 applicable, 30 executed, 6 fail, 1 inconclusive. Two new checks were added due to a new GraphQL endpoint.",
+      "rubric": [
+        "Notes the applicable denominator changed (30 to 34) and explains why",
+        "Explains that more failures partially reflects higher execution (more checks ran), not necessarily a worse posture",
+        "Reports changes in inconclusive counts",
+        "Identifies which failures are new vs persisting if data allows, or says the data does not permit it",
+        "Does not declare either run secure"
+      ]
+    },
+    {
+      "id": "unverified-findings-mix",
+      "task": "Can I take these 7 findings to the vendor as confirmed?",
+      "setup": "Ledger with 7 findings: 2 verdict confirmed (independent verifier), 3 needs_validation, 2 reported by scanner only with no verdict field.",
+      "rubric": [
+        "Separates 2 verified from 5 unverified in the answer",
+        "Advises only the 2 can be presented as confirmed",
+        "Recommends validation for the other 5 before they are shared",
+        "Quotes counts, not vague words like 'most' or 'several'"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+diff -ruN before/app.py after/app.py
+--- before/app.py	2026-11-25 18:20:06.335767528 +0100
++++ after/app.py	2026-11-25 18:20:06.338008643 +0100
+@@ -31,3 +31,15 @@
+         "SELECT id, total_cents FROM invoices WHERE owner_id = ?", (user["id"],)
+     ).fetchall()
+     return {"invoices": [dict(r) for r in rows]}
++
++
++@app.get("/invoices/<int:invoice_id>")
++def invoice_detail(invoice_id):
++    user = current_user()
++    inv = db().execute(
++        "SELECT id, owner_id, total_cents, note FROM invoices WHERE id = ?", (invoice_id,)
++    ).fetchone()
++    if inv is None:
++        abort(404)
++    app.logger.info("invoice %s viewed by %s (%s)", inv["id"], user["name"], user["email"])
++    return render_template("invoice.html", inv=inv)
+diff -ruN before/templates/invoice.html after/templates/invoice.html
+--- before/templates/invoice.html	1970-01-01 01:00:00.000000000 +0100
++++ after/templates/invoice.html	2026-11-25 18:20:06.339011745 +0100
+@@ -0,0 +1,3 @@
++<h1>Invoice {{ inv.id }}</h1>
++<p>Total: {{ inv.total_cents / 100 }}</p>
++<p>Customer note: {{ inv.note }}</p>
+diff -ruN before/tests/test_invoice_detail.py after/tests/test_invoice_detail.py
+--- before/tests/test_invoice_detail.py	1970-01-01 01:00:00.000000000 +0100
++++ after/tests/test_invoice_detail.py	2026-11-25 18:20:06.339989085 +0100
+@@ -0,0 +1,36 @@
++import sqlite3
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
++
++import pytest  # noqa: E402
++import app as appmod  # noqa: E402
++
++
++@pytest.fixture()
++def client(tmp_path):
++    path = tmp_path / "t.db"
++    con = sqlite3.connect(path)
++    con.executescript(
++        """
++        CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT, email TEXT);
++        CREATE TABLE invoices(id INTEGER PRIMARY KEY, owner_id INTEGER, total_cents INTEGER, note TEXT);
++        INSERT INTO users VALUES (1,'Alice','alice@example.test'),(2,'Bob','bob@example.test');
++        INSERT INTO invoices VALUES (10,1,5000,'<script>alert(1)</script>'),(20,2,700,'thanks');
++        """
++    )
++    con.commit()
++    con.close()
++    appmod.app.config.update(DATABASE=str(path), TESTING=True)
++    return appmod.app.test_client()
++
++
++def login(client, uid):
++    with client.session_transaction() as s:
++        s["user_id"] = uid
++
++
++def test_owner_can_view_invoice(client):
++    login(client, 1)
++    assert client.get("/invoices/10").status_code == 200

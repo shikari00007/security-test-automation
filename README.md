@@ -7,7 +7,7 @@ npx skills add shikari00007/security-test-automation
 ```
 
 [![Status: Developer Preview](https://img.shields.io/badge/status-Developer%20Preview-orange.svg)](#honest-limitations-and-accuracy)
-[![Agent Skills](https://img.shields.io/badge/Agent%20Skills-16-blue.svg)](#skills-catalog)
+[![Agent Skills](https://img.shields.io/badge/Agent%20Skills-24-blue.svg)](#skills-catalog)
 [![Domains](https://img.shields.io/badge/security%20domains-8-informational.svg)](#security-domains)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Agent Skills Standard](https://img.shields.io/badge/Agent_Skills-Standard-purple.svg)](https://agentskills.io/specification)
@@ -69,18 +69,18 @@ The CLI is installed from GitHub (it is not on PyPI). Python 3.10 or newer; no r
 
 | Agent | Install | Status in this project |
 |---|---|---|
-| Claude Code | `npx skills add` -> `.claude/skills/` | Install verified; skill discovery verified in a live session |
-| Codex | `npx skills add -a codex` -> `.agents/skills/` | Install layout verified; live loading not tested |
-| Cursor | `npx skills add -a cursor` -> `.agents/skills/` | Install layout verified; live loading not tested |
-| Gemini CLI | `npx skills add -a gemini-cli` -> `.agents/skills/` | Install layout verified; live loading not tested |
-| VS Code / GitHub Copilot | `npx skills add -a github-copilot` -> `.agents/skills/` | Install layout verified; live loading not tested |
+| Claude Code | `npx skills add` -> `.claude/skills/` | Install verified for all 24 skills (local-path install into a temporary directory, 2026-11-26); skill discovery verified in a live session for the original 16 only |
+| Codex | `npx skills add -a codex` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
+| Cursor | `npx skills add -a cursor` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
+| Gemini CLI | `npx skills add -a gemini-cli` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
+| VS Code / GitHub Copilot | `npx skills add -a github-copilot` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
 | Other Agent Skills-compatible agents | copy `skills/<name>/` into the agent's skills directory | Standard-compliant (validated with `security-skills skills validate`); not tested per agent |
 
-"Install verified" means the installer produced all 16 spec-valid skills, byte-identical to this repository. Activation behavior depends on the host agent.
+"Install verified" means `npx skills add` from a local checkout produced all 24 spec-valid skills, byte-identical to this repository (checked for Claude Code only). Installing from the GitHub repository was verified for the original 16 skills; the 8 developer skills have not yet been installed from GitHub. Activation behavior depends on the host agent.
 
 ## Skills catalog
 
-Sixteen independently installable skills. Each is a `SKILL.md` with on-demand `references/` and works without the CLI. See [`skills/README.md`](skills/README.md).
+24 independently installable skills: 16 that integrate with the optional CLI runner and 8 developer workflow skills (all Developer Preview). Each is a `SKILL.md` with on-demand `references/`; the runner skills work without the CLI. See [`skills/README.md`](skills/README.md).
 
 | Category | Skill | Use it for |
 |---|---|---|
@@ -100,6 +100,21 @@ Sixteen independently installable skills. Each is a `SKILL.md` with on-demand `r
 | Assurance | [`security-finding-validation`](skills/security-finding-validation) | Independent, adversarial validation of a candidate |
 | Assurance | [`security-regression-generation`](skills/security-regression-generation) | Propose regression tests for validated findings |
 | Assurance | [`security-reporting`](skills/security-reporting) | Reports with evidence, coverage and limits |
+
+### Developer workflow skills
+
+Guidance for building security in while writing code. They do not use the runner; their recipes were run in a sandbox where each skill's `references/VERIFICATION-NOTES.md` says so. They give checks that passed, not a claim that code is secure.
+
+| Category | Skill | Use it for |
+|---|---|---|
+| Design | [`threat-modeling`](skills/threat-modeling) | Model a feature's threats (STRIDE/LINDDUN) and map them to tests |
+| Build | [`secure-coding-patterns`](skills/secure-coding-patterns) | Safe-by-default recipes for input, queries, output and files |
+| Build | [`authn-authz-implementation`](skills/authn-authz-implementation) | Implement login, sessions, tokens and access control |
+| Build | [`secrets-management`](skills/secrets-management) | Keep credentials out of code, config and logs |
+| Test | [`security-unit-testing`](skills/security-unit-testing) | Write abuse-case and authorization tests while developing |
+| Review | [`security-code-review`](skills/security-code-review) | Security review of a diff, PR or module |
+| Fix | [`vulnerability-triage-and-fix`](skills/vulnerability-triage-and-fix) | Triage a reported vulnerability and fix it with a regression test |
+| Ship | [`security-ci-cd-integration`](skills/security-ci-cd-integration) | Add security checks and gates to a CI/CD pipeline |
 
 ## Security domains
 
@@ -161,6 +176,27 @@ The runner is offline and read-only: it has no network code, never follows symli
 | Lock in | Generate a regression test for the fixed behavior | `security-skills regression generate` |
 | Before release | Standard or Deep audit; read the untested list, not just the findings | `security-reporting`, `REPORT.md` |
 
+### Make your agent load the developer skills
+
+Agents often answer security questions from memory instead of loading a skill. In our small pilot, adding this block to your project's `CLAUDE.md` (or `AGENTS.md`) made the agent load a skill in every run, where it loaded none without it. It also tells the agent that security matters, so some of any improvement in outcomes may come from that alone.
+
+```markdown
+## Security skills
+
+This project has security skills installed (`.claude/skills/`). Before you write or change code that touches any of the areas below, load the matching skill and follow it. Say which skill you used.
+
+- Authentication, sessions, tokens, roles, tenant or object ownership checks: `authn-authz-implementation`
+- User input, files and paths, outbound HTTP requests, templates, queries, redirects, error handling: `secure-coding-patterns`
+- Secrets, API keys, `.env` files, config, logging of sensitive values: `secrets-management`
+- New feature, new endpoint, new data flow or a new integration (design stage): `threat-modeling`
+- Writing tests that prove a security property: `security-unit-testing`
+- Reviewing a diff or pull request for security problems: `security-code-review`
+- A scanner alert, advisory or reported bug to assess and fix: `vulnerability-triage-and-fix`
+- CI/CD pipelines, release workflows, dependency and image scanning: `security-ci-cd-integration`
+
+Treat findings as candidates until they are confirmed with evidence. Never test hosts you were not told you may test.
+```
+
 A GitHub Actions example (adapted from this repository's own [CI](.github/workflows/validate.yml)):
 
 ```yaml
@@ -210,7 +246,9 @@ The pytest generator is verified red/green against the local secure and vulnerab
 | Regression generators | pytest verified; Playwright / Schemathesis are skeletons |
 | Static analysis | Line and pattern based, no data-flow analysis; expect false positives **and** false negatives |
 | A passed check | Covers only that check's pattern, not an application or a vulnerability class |
-| Live agent testing | Skill discovery was verified in Claude Code only |
+| Live agent testing | Skill discovery was verified in Claude Code only, for the original 16 skills |
+| Skill routing | Agents invoke a skill only some of the time and often answer directly. Measured with the Claude Code CLI (small samples, one run each, prompts written by the skill authors, so treat as indicative): for the 8 developer skills, 17 of 24 positive prompts loaded the intended skill in isolation and 15 of 16 with a typical set of other skills installed; on 25 fresh prompts for five rewritten descriptions the hit rate was 13 of 25, and none of the 10 near-neighbour negatives triggered the wrong skill. In a small A/B pilot the skills were never invoked unprompted (0 of 16 runs); adding a short instruction block to `CLAUDE.md` (see Developer workflow) made the agent load a skill in 8 of 8 runs. Name the skill in your prompt (for example `Use threat-modeling ...`) when it matters |
+| Developer workflow skills | Newer and reviewed less than the runner skills; their code samples were run only on the versions named in each skill's `references/VERIFICATION-NOTES.md` |
 
 "True positive" here means the pattern is present, not that it is exploitable. The accuracy corpus (524 hand-written cases) reports 0 false positives and 0 false negatives *by construction* because rules were tuned until it passed; it is a regression guard, not an accuracy estimate. Details: [`docs/RULE-ACCURACY.md`](docs/RULE-ACCURACY.md), [web/API/supply chain triage](docs/RULE-ACCURACY-FIELD-web-api-sc.md), [mobile/desktop/cloud triage](docs/RULE-ACCURACY-FIELD-mobile-desktop-cloud.md), [AI/LLM triage](docs/RULE-ACCURACY-FIELD-ai-llm.md), [AI/LLM methodology](docs/methodology/ai-llm.md).
 
@@ -219,7 +257,7 @@ Use this only on software you own or are authorized to assess. Never run it agai
 ## Project layout
 
 ```text
-skills/            The 16 installable Agent Skills (SKILL.md + references/)
+skills/            The 24 installable Agent Skills (SKILL.md + references/)
 security_runner/   Offline-first CLI, engine, rules and reviewed check data
 fixtures/          Secure and vulnerable sample projects, plus the accuracy corpus
 tests/             Automated tests for the framework itself

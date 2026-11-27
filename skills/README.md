@@ -1,6 +1,6 @@
 # Skills
 
-Sixteen independently installable Agent Skills (https://agentskills.io/specification). Each folder contains a `SKILL.md` and a `references/` directory and works on its own when copied by `npx skills add`; the `security-skills` CLI is optional. The CLI is installed from GitHub with `pip install git+https://github.com/shikari00007/security-test-automation.git` (it is not on PyPI).
+24 independently installable Agent Skills (16 runner-integrated, 8 developer workflow; https://agentskills.io/specification). Each folder contains a `SKILL.md` and a `references/` directory and works on its own when copied by `npx skills add`; the `security-skills` CLI is optional. The CLI is installed from GitHub with `pip install git+https://github.com/shikari00007/security-test-automation.git` (it is not on PyPI).
 
 Skills: security-start, security-project-context, security-do, security-test-strategy, security-coverage-analysis, web-security-testing, api-security-testing, android-security-testing, ios-security-testing, desktop-security-testing, supply-chain-security, cloud-kubernetes-security, ai-llm-security, security-finding-validation, security-regression-generation, security-reporting.
 

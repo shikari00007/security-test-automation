@@ -79,7 +79,7 @@ def test_readme_required_content():
     assert "51% strict precision" in r and "Developer Preview" in r
     from security_runner.skillcheck import validate_dir
     names = validate_dir(ROOT / "skills")["skills"]
-    assert len(names) == 16 and all(f"skills/{n})" in r for n in names), "README skill table must link all 16 skills"
+    assert len(names) == 24 and all(f"skills/{n})" in r for n in names), "README skill table must link all 24 skills"
 
 
 def test_documented_scripts_exist():

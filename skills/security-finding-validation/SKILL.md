@@ -1,6 +1,6 @@
 ---
 name: security-finding-validation
-description: "Validates security candidates with an independent fresh-context verifier that sees only the evidence packet (adversarial validation), then sets verdict confirmed, needs_validation or rejected. Use when a scanner or earlier pass reports a finding, before severity is assigned, or before a regression test is written. Not for: initial discovery (domain skills), exploiting issues beyond minimal proof, live testing without written scope, or automated CLI re-execution alone."
+description: "Use when the user says things like \"is this finding real\", \"is this semgrep/bandit/scanner result a false positive\", \"validate these candidate findings\", \"second opinion with fresh eyes\", \"confirm these before we assign severity\", \"settle whether SEC-14 is bogus\", or \"is the vulnerable dependency actually reachable\". Runs an independent fresh-context verifier that sees only the evidence packet and sets verdict confirmed, needs_validation or rejected, before severity or a regression test. Not for: initial discovery (use the domain skills), prioritizing or ranking already-confirmed findings, exploiting beyond minimal proof, live testing without written scope, or re-running a CLI alone. Related: api-security-testing, web-security-testing, supply-chain-security."
 license: MIT
 compatibility: Any Agent Skills runtime with file read access. Optional security-skills CLI (Python 3.10+, offline). No network required.
 metadata:

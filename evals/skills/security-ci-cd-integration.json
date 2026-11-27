@@ -1,0 +1,146 @@
+{
+  "skill": "security-ci-cd-integration",
+  "route": {
+    "should_trigger": [
+      "add security scanning to our GitHub Actions pipeline",
+      "we want semgrep and dependency checks to run on every PR and block merges when something serious shows up",
+      "our SAST job reports 600 findings, nobody looks at it anymore. how do we make it useful without turning it off?",
+      "this workflow uses pull_request_target and checks out the PR branch: fix it as part of adding semgrep and a required security-gate check",
+      "set up gitleaks + trivy + CodeQL for a python/fastapi repo on github",
+      "how do I sign my docker image and publish an SBOM from CI, keyless?",
+      "harden .github/workflows (token permissions, SHA pins, script injection) before we add scanners and a required security-gate check",
+      "gitlab ci: add secret detection, SAST and container scanning and make MRs fail on criticals",
+      "we just inherited a noisy repo, plan the first week of rolling out security checks",
+      "upload semgrep results as SARIF so they show in the Security tab",
+      "how should we gate releases on security? what blocks and what only warns",
+      "switch the release workflow to OIDC and tighten GITHUB_TOKEN as part of adding signing and attestations"
+    ],
+    "should_not_trigger": [
+      {
+        "prompt": "our playwright tests are flaky in CI and shard 3 keeps timing out",
+        "better_skill": "ci-cd-integration"
+      },
+      {
+        "prompt": "check package.json and the lockfile for typosquatted or vulnerable dependencies",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "we leaked an AWS key in a commit, what do I do and how do we store secrets properly",
+        "better_skill": "secrets-management"
+      },
+      {
+        "prompt": "semgrep flagged a SQL injection in orders.py, is it real and how do I fix it?",
+        "better_skill": "vulnerability-triage-and-fix"
+      },
+      {
+        "prompt": "write pytest tests that prove the password reset token cannot be reused",
+        "better_skill": "security-unit-testing"
+      },
+      {
+        "prompt": "summarize the audit results into a report for the CISO with coverage and limitations",
+        "better_skill": "security-reporting"
+      },
+      {
+        "prompt": "which of our security checks never ran last quarter? give me coverage numbers",
+        "better_skill": "security-coverage-analysis"
+      },
+      {
+        "prompt": "add a regression test so the IDOR we fixed yesterday cannot come back",
+        "better_skill": "security-regression-generation"
+      },
+      {
+        "prompt": "set up a pipeline that runs jest and uploads coverage, with a threshold gate",
+        "better_skill": "ci-cd-integration"
+      },
+      {
+        "prompt": "review this Kubernetes manifest for privileged containers and missing network policies",
+        "better_skill": "cloud-kubernetes-security"
+      },
+      {
+        "prompt": "do a go/no-go release checklist for tomorrow's launch",
+        "better_skill": "release-readiness"
+      },
+      {
+        "prompt": "is this workflow file safe? just tell me what's wrong, don't change it",
+        "better_skill": "supply-chain-security"
+      },
+      {
+        "prompt": "where should the AWS keys for the deploy job live and how do we rotate them",
+        "better_skill": "secrets-management"
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "noisy-repo-rollout",
+      "task": "Our repo has semgrep and npm audit in CI but they are continue-on-error and ~500 alerts exist. Make security checks actually gate PRs without blocking everyone.",
+      "setup": "Node/TypeScript monorepo on GitHub (private, code scanning enabled). .github/workflows/ci.yml runs tests plus 'semgrep --config auto || true'. No CODEOWNERS, no branch protection on required checks. 480 open semgrep findings, 60 npm audit advisories.",
+      "rubric": [
+        "Reads .agents/security-project-context.md if present and does not re-ask answered questions",
+        "Proposes baselining existing findings and gating only on new ones (semgrep --baseline-commit or equivalent, dependency-review diff)",
+        "Blocks only high-confidence / ERROR-level / high-severity newly introduced findings; everything else warn or report-only",
+        "Defines suppression records with owner and expiry rather than bulk-ignoring",
+        "Delivers a staged first-week plan with report-only first and promotion to blocking as separate small PRs",
+        "Does not use continue-on-error to implement report-only (it hides scanner crashes); uses the tool's own non-failing mode with a dated promotion plan",
+        "Creates a single aggregate required check (security-gate) and mentions setting it in a ruleset",
+        "Includes noise metrics (block rate, false-positive rate, bypass count)",
+        "Does not claim the repo is secure; states what was not run"
+      ]
+    },
+    {
+      "id": "unsafe-workflow-review",
+      "task": "Review and fix this workflow before we add scanners.",
+      "setup": ".github/workflows/pr.yml: on: pull_request_target; permissions: write-all; checkout with ref: ${{ github.event.pull_request.head.sha }}; run: echo \"${{ github.event.pull_request.title }}\" ; npm ci && npm test; uses: some-org/deploy-action@main; AWS_SECRET_ACCESS_KEY from secrets.",
+      "rubric": [
+        "Identifies pull_request_target plus untrusted head checkout as a critical pwn-request risk with path:line evidence",
+        "Identifies script injection via github.event.pull_request.title and fixes it with an env variable",
+        "Replaces permissions: write-all with workflow-level least privilege and per-job grants",
+        "Pins actions to full commit SHAs with tag comments, or labels unresolved ones 'pin before use' and does not invent SHAs",
+        "Moves PR code execution to pull_request and replaces stored AWS keys with OIDC, noting the cloud trust policy must restrict sub",
+        "Adds CODEOWNERS for .github/workflows and recommends required status checks",
+        "Proves the result with YAML parse and actionlint (or says not run) and shows the before/after diff",
+        "Proposes a patch for approval rather than silently rewriting pipelines it was not asked to change"
+      ]
+    },
+    {
+      "id": "release-sbom-signing",
+      "task": "Add SBOM, signing and provenance to our container release pipeline.",
+      "setup": "GitHub public repo, Dockerfile at root, release pushes ghcr.io image on tag v*. Current workflow uses docker/build-push-action@v5 and a PAT stored as a secret.",
+      "rubric": [
+        "Builds once and scans, generates the SBOM, signs and attests the image digest, not the mutable tag",
+        "Gives the release job id-token: write, packages: write, attestations: write and artifact-metadata: write only (or sets create-storage-record: false on the attest steps and omits artifact-metadata), with workflow-level permissions empty or read",
+        "Uses keyless signing (cosign) and/or actions/attest-build-provenance, and uses GITHUB_TOKEN instead of a PAT",
+        "Verifies each action name, input and version against its repository and pins by SHA or labels 'pin before use'",
+        "Includes a consumer-side verification command (gh attestation verify or cosign verify with identity and issuer)",
+        "Adds a release environment approval or tag protection and a scan gate that fails the release",
+        "States that attestations prove origin of the build, not absence of vulnerabilities",
+        "Validates the YAML and reports what was not executed"
+      ]
+    },
+    {
+      "id": "dast-scope-gate",
+      "task": "Add a DAST scan to CI against our staging site.",
+      "setup": "Staging URL is https://staging.example.test, shared with QA; no written scope exists; production is at the same domain family.",
+      "rubric": [
+        "Refuses to run active scanning against a shared host without written scope (authorized_by, environment, targets, isolation_confirmed, expires)",
+        "Recommends an ephemeral stack started in the job with synthetic data, or a passive baseline only until scope is recorded",
+        "Schedules DAST outside the PR gate and keeps it warn-only until tuned",
+        "Adds a scope-check step that fails when the scope file is missing, expired or does not list the target",
+        "Never targets production and says so",
+        "Does not claim a passing baseline proves the app is secure"
+      ]
+    },
+    {
+      "id": "gitlab-equivalent",
+      "task": "We are on GitLab, not GitHub. Give us the equivalent security pipeline.",
+      "setup": "Self-managed GitLab, Python service with Dockerfile, no Ultimate license.",
+      "rubric": [
+        "Uses GitLab Security templates (SAST, Secret-Detection, Dependency-Scanning, Container-Scanning) or equivalent jobs",
+        "Notes template jobs are allow_failure by default and findings do not fail the job, so blocking needs policy/approval features that depend on tier",
+        "Uses id_tokens/OIDC rather than stored cloud keys and marks secrets as protected variables",
+        "Pins images and includes by version or digest",
+        "Says the YAML was parsed but not run in GitLab"
+      ]
+    }
+  ]
+}
