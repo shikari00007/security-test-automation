@@ -69,14 +69,14 @@ The CLI is installed from GitHub (it is not on PyPI). Python 3.10 or newer; no r
 
 | Agent | Install | Status in this project |
 |---|---|---|
-| Claude Code | `npx skills add` -> `.claude/skills/` | Install verified for all 24 skills (local-path install into a temporary directory, 2026-11-26); skill discovery verified in a live session for the original 16 only |
+| Claude Code | `npx skills add` -> `.claude/skills/` | Install verified for all 24 skills from GitHub (`npx skills add shikari00007/security-test-automation -a claude-code -y` into a fresh project, 2026-11-27: 168 files, byte-identical to `main`); skill discovery verified in a live session for the original 16 only |
 | Codex | `npx skills add -a codex` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
 | Cursor | `npx skills add -a cursor` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
 | Gemini CLI | `npx skills add -a gemini-cli` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
 | VS Code / GitHub Copilot | `npx skills add -a github-copilot` -> `.agents/skills/` | Install layout verified for the original 16 skills; not re-run for the 8 developer skills; live loading not tested |
 | Other Agent Skills-compatible agents | copy `skills/<name>/` into the agent's skills directory | Standard-compliant (validated with `security-skills skills validate`); not tested per agent |
 
-"Install verified" means `npx skills add` from a local checkout produced all 24 spec-valid skills, byte-identical to this repository (checked for Claude Code only). Installing from the GitHub repository was verified for the original 16 skills; the 8 developer skills have not yet been installed from GitHub. Activation behavior depends on the host agent.
+"Install verified" means `npx skills add` from the GitHub repository produced all 24 spec-valid skills, byte-identical to this repository (checked for Claude Code only; the other agents' install layouts were verified for the original 16 skills). Activation behavior depends on the host agent.
 
 ## Skills catalog
 
