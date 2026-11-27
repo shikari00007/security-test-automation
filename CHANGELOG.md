@@ -10,6 +10,7 @@
 - **Skills:** removed stale "not yet published" wording (the CLI installs from GitHub: `pip install git+https://github.com/shikari00007/security-test-automation.git`); added the missing Developer Preview banner to `ai-llm-security`.
 - **Tooling:** `scripts/check_links.py` (relative links and anchors), `scripts/check_public_mit.py`, release gate now verifies MIT metadata in the wheel and sdist and no longer requires the private raw inventory unless `--require-restricted-scan` is passed.
 - **Evaluation (small samples, indicative only):** routing baseline for the 8 developer skills (isolated 17/24 trigger, 24/24 not-trigger; with other skills installed 15/16 and 16/16); seeded-bug A/B pilots (T1-T4 easy tasks: 8/8 both conditions; T5-T8 harder tasks: no skills 6/8, skills 7/8, skills + instruction block 8/8, skills named in prompt 8/8; skills invoked unprompted 0/16, with the instruction block 8/8). No statistical significance is claimed.
+- **Install check:** `npx skills add shikari00007/security-test-automation -a claude-code -y` into a fresh project installed all 24 skills (168 files), byte-identical to `main` (Claude Code only).
 - Accuracy numbers are unchanged (51% strict precision for the evaluated Web/API/Supply-chain rules).
 
 ## 0.3.0rc1 - Developer Preview release candidate
